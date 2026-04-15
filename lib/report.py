@@ -34,7 +34,7 @@ def _minutes_by_day(
     by_day: dict[str, dict] = {}
     d = start_date
     while d < end_date:
-        by_day[d.isoformat()] = {"minutes": 0.0, "sessions": 0, "categories": {}}
+        by_day[d.isoformat()] = {"minutes": 0.0, "activeMinutes": 0.0, "sessions": 0, "categories": {}}
         d += timedelta(days=1)
 
     first_day_iso = start_date.isoformat()
@@ -51,31 +51,34 @@ def _minutes_by_day(
         if day not in by_day:
             continue  # post-window guard, defensive
         bucket = by_day[day]
-        bucket["minutes"] += float(session.get("durationMin") or 0)
+        bucket["minutes"] += _session_duration(session, "durationMin")
+        bucket["activeMinutes"] += _session_duration(session, "activeDurationMin")
         bucket["sessions"] += 1
         cat = session.get("category", "other")
         bucket["categories"][cat] = bucket["categories"].get(cat, 0) + 1
 
     for bucket in by_day.values():
         bucket["minutes"] = round(bucket["minutes"], 1)
+        bucket["activeMinutes"] = round(bucket["activeMinutes"], 1)
     return by_day
 
 
-def _minutes_by_repo(sessions: list[dict]) -> dict:
-    """Total minutes per repoShort, sorted desc."""
-    totals: dict[str, float] = {}
-    for session in sessions:
-        repo = session.get("repoShort") or "unknown"
-        totals[repo] = totals.get(repo, 0.0) + float(session.get("durationMin") or 0)
-    return {k: round(v, 1) for k, v in sorted(totals.items(), key=lambda kv: -kv[1])}
+def _session_duration(session: dict, field: str) -> float:
+    """Read a duration field with fallback for active fields on old reports."""
+    val = session.get(field)
+    if val is None and field != "durationMin":
+        val = session.get("durationMin")
+    return float(val or 0)
 
 
-def _category_minutes(sessions: list[dict]) -> dict:
-    """Total minutes per category, sorted desc."""
+def _sum_minutes(
+    sessions: list[dict], *, group_key: str, duration_key: str, default_group: str = "other",
+) -> dict:
+    """Sum a duration field grouped by a key field, sorted desc."""
     totals: dict[str, float] = {}
     for session in sessions:
-        cat = session.get("category", "other")
-        totals[cat] = totals.get(cat, 0.0) + float(session.get("durationMin") or 0)
+        group = session.get(group_key) or default_group
+        totals[group] = totals.get(group, 0.0) + _session_duration(session, duration_key)
     return {k: round(v, 1) for k, v in sorted(totals.items(), key=lambda kv: -kv[1])}
 
 
@@ -160,8 +163,10 @@ def _compute_totals(
         "sessionsByRepo": by_repo,
         "prsByRepo": pr_by_repo,
         "uncorrelatedSessions": sum(1 for session in sessions if not session.get("correlatedPRs")),
-        "minutesByRepo": _minutes_by_repo(sessions),
-        "categoryMinutes": _category_minutes(sessions),
+        "minutesByRepo": _sum_minutes(sessions, group_key="repoShort", duration_key="durationMin", default_group="unknown"),
+        "categoryMinutes": _sum_minutes(sessions, group_key="category", duration_key="durationMin"),
+        "activeMinutesByRepo": _sum_minutes(sessions, group_key="repoShort", duration_key="activeDurationMin", default_group="unknown"),
+        "activeCategoryMinutes": _sum_minutes(sessions, group_key="category", duration_key="activeDurationMin"),
     }
     if window_start and window_end:
         totals["minutesByDay"] = _minutes_by_day(sessions, window_start, window_end)

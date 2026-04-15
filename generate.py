@@ -130,6 +130,9 @@ def _parse_args(argv=None):
                    help="Skip the 'PRs you reviewed' fetch.")
     p.add_argument("--clear-cache", action="store_true",
                    help="Discard the cached PR detail file before fetching.")
+    p.add_argument("--idle-threshold", type=float, default=45, metavar="MINUTES",
+                   help="Gaps longer than this (minutes) are counted as idle time. "
+                        "Used to compute activeDurationMin. Default: 45.")
     p.add_argument("--rerender", action="store_true",
                    help="Skip scan/fetch/correlate. Load <output-dir>/report.json, "
                         "recompute totals, and re-emit the artifacts selected by --format. "
@@ -198,7 +201,7 @@ def main(argv=None) -> int:
 
     # Sessions
     print(f"[scan] sessions in {PROJECTS_DIR}")
-    sessions = scan_sessions(PROJECTS_DIR, window_start, window_end)
+    sessions = scan_sessions(PROJECTS_DIR, window_start, window_end, idle_threshold_min=args.idle_threshold)
     print(f"  found {len(sessions)} sessions in window")
 
     # PR searches: authored + reviewed are independent gh subprocesses, run in parallel

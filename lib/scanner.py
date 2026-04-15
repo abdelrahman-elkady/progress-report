@@ -54,7 +54,31 @@ def _relativize(absolute: str, git_root: Path | None) -> str:
         return absolute
 
 
-def parse_session_file(path: Path, window_start: datetime, window_end: datetime) -> dict | None:
+def _active_duration_minutes(
+    timestamps: list[datetime],
+    idle_threshold_min: float = 45.0,
+) -> float:
+    """Compute active duration by subtracting gaps > threshold from wall-clock span.
+
+    Walks consecutive message timestamps; only gaps within the threshold
+    contribute to active time. Gaps exceeding the threshold are idle time.
+    """
+    if len(timestamps) < 2:
+        return 0.0
+    sorted_ts = sorted(timestamps)
+    threshold_sec = idle_threshold_min * 60
+    total_active_sec = 0.0
+    for i in range(1, len(sorted_ts)):
+        gap = (sorted_ts[i] - sorted_ts[i - 1]).total_seconds()
+        if gap <= threshold_sec:
+            total_active_sec += gap
+    return round(total_active_sec / 60, 1)
+
+
+def parse_session_file(
+    path: Path, window_start: datetime, window_end: datetime,
+    *, idle_threshold_min: float = 45.0,
+) -> dict | None:
     """Parse one .jsonl session file. Returns None if it's empty, sidechain, or
     falls outside the window.
 
@@ -77,6 +101,7 @@ def parse_session_file(path: Path, window_start: datetime, window_end: datetime)
     bash_cmds: list[str] = []
     user_messages: list[dict] = []
     assistant_texts: list[dict] = []
+    all_msg_timestamps: list[datetime] = []
 
     try:
         with path.open("r") as f:
@@ -98,6 +123,9 @@ def parse_session_file(path: Path, window_start: datetime, window_end: datetime)
                     last_ts = ts
                 msg = rec.get("message", {}) or {}
                 ts_iso = ts.isoformat() if ts else ""
+
+                if ts and rtype in ("user", "assistant"):
+                    all_msg_timestamps.append(ts)
 
                 if rtype == "user":
                     if rec.get("isMeta"):
@@ -178,6 +206,7 @@ def parse_session_file(path: Path, window_start: datetime, window_end: datetime)
         "lastActivityAt": (last_ts or modified).isoformat(),
         "modifiedAt": modified.isoformat(),
         "durationMin": round(((last_ts or modified) - created).total_seconds() / 60, 1),
+        "activeDurationMin": _active_duration_minutes(all_msg_timestamps, idle_threshold_min),
         "userMsgCount": user_msgs,
         "assistantMsgCount": assistant_msgs,
         "toolCounts": tool_counts,
@@ -195,6 +224,8 @@ def scan_sessions(
     projects_dir: Path,
     window_start: datetime,
     window_end: datetime,
+    *,
+    idle_threshold_min: float = 45.0,
 ) -> list[dict]:
     """Walk projects_dir/*/*.jsonl, return sessions whose activity falls in the window.
 
@@ -213,7 +244,7 @@ def scan_sessions(
                 continue
         except OSError:
             continue
-        session = parse_session_file(p, window_start, window_end)
+        session = parse_session_file(p, window_start, window_end, idle_threshold_min=idle_threshold_min)
         if session:
             sessions.append(session)
     sessions.sort(key=lambda session: session["createdAt"], reverse=True)
