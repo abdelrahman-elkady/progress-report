@@ -20,6 +20,7 @@ CATEGORIES = frozenset({
     "testing",
     "meta",
     "ask",
+    "discarded",
     "other",
 })
 
@@ -74,6 +75,15 @@ def categorize(session: dict) -> str:
     """Pick the most likely category for a session. Returns one of `CATEGORIES`."""
     prompt = (session.get("firstPrompt") or "").lower()
     tools = session.get("toolCounts") or {}
+    duration_min = session.get("durationMin", 0) or 0
+
+    # Discarded: trivially empty sessions (either condition triggers).
+    if sum(tools.values()) == 0:
+        return "discarded"
+    if duration_min < 0.5:
+        assistant_texts = session.get("assistantTexts") or []
+        if sum(len(t.get("text", "")) for t in assistant_texts) < 50:
+            return "discarded"
 
     edit_count = sum(tools.get(t, 0) for t in ("Edit", "Write", "MultiEdit"))
     read_count = tools.get("Read", 0)
@@ -81,7 +91,6 @@ def categorize(session: dict) -> str:
     bash_count = tools.get("Bash", 0)
     total_tools = sum(tools.values())
     user_msg_count = session.get("userMsgCount", 0) or 0
-    duration_min = session.get("durationMin", 0) or 0
 
     scores: dict[str, int] = {}
     for cat, patterns in CATEGORY_RULES:
