@@ -9,6 +9,7 @@ Provides:
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -17,6 +18,12 @@ from pathlib import Path
 
 from .jira import extract_jira_ids
 from .utils import now_utc, parse_iso
+
+# Allowlist for repo full-names returned by the GitHub API.
+# Rejects path-traversal payloads like "owner/repo/../../etc" before they
+# reach the gh api URL path. GitHub repo/owner names are alphanumeric plus
+# hyphens/dots/underscores; the slash is the single owner/repo separator.
+_REPO_FULL_RE = re.compile(r"^[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+$")
 
 PR_DETAIL_WORKERS = 8
 
@@ -120,7 +127,11 @@ def fetch_pr_details_concurrent(
     """
     cache: dict[str, dict] = {}
     try:
-        cache = json.loads(cache_path.read_text())
+        loaded = json.loads(cache_path.read_text())
+        if isinstance(loaded, dict):
+            cache = loaded
+        else:
+            print("[warn] PR cache has unexpected shape; starting fresh", file=sys.stderr)
     except (FileNotFoundError, json.JSONDecodeError):
         cache = {}
 
@@ -128,13 +139,18 @@ def fetch_pr_details_concurrent(
     todo: list[tuple[str, str, int]] = []
     for pr in raw_prs:
         repo_full = pr["repository"].get("nameWithOwner") or pr["repository"].get("fullName")
-        if not repo_full:
+        if not repo_full or not _REPO_FULL_RE.match(repo_full):
+            if repo_full:
+                print(f"[warn] skipping PR with unexpected repo name: {repo_full!r}", file=sys.stderr)
             continue
-        key = f"{repo_full}#{pr['number']}"
+        number = pr["number"]
+        if not isinstance(number, int) or number <= 0:
+            continue
+        key = f"{repo_full}#{number}"
         if key in cache:
             results[key] = cache[key]
         else:
-            todo.append((key, repo_full, pr["number"]))
+            todo.append((key, repo_full, number))
 
     if todo:
         with ThreadPoolExecutor(max_workers=PR_DETAIL_WORKERS) as ex:
@@ -183,7 +199,7 @@ def enrich_prs(
     enriched: list[dict] = []
     for pr in raw_prs:
         repo_full = pr["repository"].get("nameWithOwner") or pr["repository"].get("fullName")
-        if not repo_full:
+        if not repo_full or not _REPO_FULL_RE.match(repo_full):
             continue
         key = f"{repo_full}#{pr['number']}"
         d = details.get(key)
