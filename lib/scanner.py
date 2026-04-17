@@ -239,6 +239,10 @@ def scan_sessions(
     for p in projects_dir.glob("*/*.jsonl"):
         if "subagents" in p.parts:
             continue
+        # Skip symlinks — glob follows them by default and a symlinked .jsonl
+        # could point outside ~/.claude/projects/ to an arbitrary file.
+        if p.is_symlink():
+            continue
         try:
             if p.stat().st_mtime < window_start_ts:
                 continue

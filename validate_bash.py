@@ -76,8 +76,12 @@ def main() -> None:
             f"with no prefix or wrapper: {command}"
         )
 
-    # The bundled generate.py path must appear as a token.
-    if ALLOWED_SCRIPT not in tokens:
+    # The bundled generate.py path must be the *script* token (index 1),
+    # not just present anywhere in the argument list. Checking `in tokens`
+    # would allow `python3 /tmp/evil.py /path/to/skill/generate.py` where
+    # generate.py is merely passed as a CLI argument to a different script.
+    script_token = tokens[1] if len(tokens) > 1 else ""
+    if script_token != ALLOWED_SCRIPT:
         deny(
             f"{_HOOK_PREFIX}: only {ALLOWED_SCRIPT} may be run "
             f"via python3 while this skill is active. Refusing: {command}"
