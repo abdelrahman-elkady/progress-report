@@ -154,3 +154,4 @@ venv/
 .ruff_cache/
 
 plan-and-dev-assets/
+.claude/settings.local.json
