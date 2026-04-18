@@ -128,3 +128,21 @@ def categorize(session: dict) -> str:
     result = max(scores.items(), key=lambda kv: kv[1])[0]
     assert result in CATEGORIES, f"categorizer produced unknown category: {result!r}"
     return result
+
+
+REVIEW_REASONS: dict[str, str] = {
+    "other": "heuristic could not pick a category",
+    "discarded": "flagged as trivial — consider promoting if the short session was actually meaningful",
+    "meta": "keyword match — may actually be discarded if the work was trivial",
+    "ask": "shape-based match — may actually be discarded or exploration",
+}
+
+
+def review_reason(category: str) -> str | None:
+    """Return a short hint explaining why `category` is uncertain, or None.
+
+    The four flagged buckets — `other`, `discarded`, `meta`, `ask` — are the ones
+    the optional refinement pass (see SKILL.md) should re-inspect. All other
+    categories return None.
+    """
+    return REVIEW_REASONS.get(category)

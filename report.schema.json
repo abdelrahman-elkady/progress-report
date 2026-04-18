@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "progress-report-skill/report/v1.0.0",
+  "$id": "progress-report-skill/report/v1.1.0",
   "title": "Progress Report",
   "description": "Output schema for the progress-report-skill. All timestamps are UTC ISO 8601. See REPORT_SCHEMA.md for usage notes and consumer guidance.",
   "type": "object",
@@ -274,6 +274,8 @@
         "assistantTexts",
         "jiraIds",
         "category",
+        "needsReview",
+        "reviewReason",
         "correlatedPRs"
       ],
       "properties": {
@@ -378,6 +380,14 @@
           "description": "Jira IDs extracted from prompts, messages, and branch name"
         },
         "category": { "$ref": "#/$defs/Category" },
+        "needsReview": {
+          "type": "boolean",
+          "description": "True iff `category` is one of the four uncertain buckets (`other`, `discarded`, `meta`, `ask`). Signals to the optional refinement pass that this session is worth re-inspecting."
+        },
+        "reviewReason": {
+          "type": ["string", "null"],
+          "description": "Short, per-category hint describing what the heuristic was uncertain about. Non-null iff `needsReview` is true."
+        },
         "correlatedPRs": {
           "type": "array",
           "items": { "$ref": "#/$defs/CorrelationMatch" },

@@ -114,6 +114,8 @@ Projects without Jira-style IDs degrade gracefully — set `JIRA_RE` narrower or
 
 Heuristic categorization (`lib/categorize.py`) only. SKILL.md documents an optional **post-generation refinement pass**: the calling Claude reads `report.json`, edits ambiguous `category` fields in place, and re-emits via `python3 generate.py --rerender --output-dir <dir>`. Same pattern for **Jira enrichment** via the Atlassian MCP.
 
+The canonical signal for which sessions to re-inspect is **`session.needsReview`** (added in schema v1.1.0) — a boolean derived from `category`, true for the four uncertain buckets (`other`, `discarded`, `meta`, `ask`). Refinement loops should iterate `sessions` filtered on this field rather than re-deriving their own ambiguity rules. `reviewReason` provides a short per-category hint for the agent.
+
 This keeps **zero new Python deps** and the LLM intelligence comes "for free" from whichever agent invokes the skill.
 
 ⚠️ **Never embed multi-line scripts in SKILL.md.** Anything beyond a single shell call belongs behind a flag in `generate.py`. Inline `python3 -c` blobs (a) can't be linted or tested, (b) drift from real code, (c) get mangled on LLM rewrites due to nested quoting, and (d) `validate_bash.py` rejects any `python3` invocation that doesn't include `generate.py` as a token, so they're dead-on-arrival anyway. The `--rerender` flag exists specifically to replace one such inline blob.

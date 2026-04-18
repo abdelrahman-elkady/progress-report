@@ -6,6 +6,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from .categorize import review_reason
 from .utils import now_utc, parse_iso
 
 SHORT_ID_LEN = 8
@@ -182,6 +183,11 @@ def recompute_totals(report: dict) -> None:
     `workweekDays` fields are intentionally NOT touched here — they were
     locked in at initial generation and shouldn't shift on re-emit.
     """
+    for session in report.get("sessions", []):
+        if "needsReview" not in session:
+            reason = review_reason(session.get("category", ""))
+            session["needsReview"] = reason is not None
+            session["reviewReason"] = reason
     ws = parse_iso(report.get("windowStart"))
     we = parse_iso(report.get("windowEnd"))
     report["totals"] = _compute_totals(

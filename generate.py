@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from lib.categorize import categorize
+from lib.categorize import categorize, review_reason
 from lib.correlate import correlate
 from lib.github import (
     enrich_prs,
@@ -231,7 +231,11 @@ def main(argv=None) -> int:
 
     # Categorize sessions
     for session in sessions:
-        session["category"] = categorize(session)
+        cat = categorize(session)
+        session["category"] = cat
+        reason = review_reason(cat)
+        session["needsReview"] = reason is not None
+        session["reviewReason"] = reason
 
     # Correlate
     print("[correlate] sessions ↔ authored PRs")
