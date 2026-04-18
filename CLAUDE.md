@@ -81,6 +81,10 @@ The schema carries a semantic version in its `$id` field (e.g. `progress-report-
 1. **Bump the version in `$id`** following [semver](https://semver.org/) — MAJOR for breaking/removing fields, MINOR for additive changes, PATCH for description-only fixes.
 2. **Add an entry in [CHANGELOG.md](CHANGELOG.md)** under a new heading matching the bumped version.
 
+## Implementation plans
+
+Implementation plans live in `ai-docs/plans/` and are prefixed with a 3-digit zero-padded sequential number, e.g. `001-schema-v1-update.md`, `002-foo.md`. Increment from the highest existing number when adding a new plan.
+
 ## The Bash hook
 
 `validate_bash.py` is a `PreToolUse` hook that rejects any `python3` invocation other than `generate.py`. `allowed-tools: Bash(python3 *)` in `SKILL.md` is intentionally broad — the hook is the real security boundary. Don't try to tighten `allowed-tools` to a path-specific matcher; glob matching does not expand `${CLAUDE_SKILL_DIR}` and baking an absolute path breaks portability.

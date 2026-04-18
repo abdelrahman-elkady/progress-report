@@ -72,12 +72,21 @@ These passes use Claude's own intelligence and tools — they do **not** require
 
 ### LLM category refinement
 
-After running `generate.py`, the report has heuristic categories. For sessions where the heuristic is likely wrong (`category == "other"`, very long sessions, sessions whose `firstPrompt` starts with `<ide_opened_file>` and has little useful text), you should:
+After running `generate.py`, every session carries `needsReview` (boolean) and `reviewReason` (string | null). `needsReview: true` flags the four uncertain heuristic buckets — `other`, `discarded`, `meta`, `ask` — that are worth re-inspecting. Use these as the canonical signal for which sessions to look at; do not re-derive your own ambiguity rules.
 
-1. Read `<output-dir>/report.json` (Read tool).
-2. For each ambiguous session, look at its `firstPrompt`, `userMessages`, and `toolCounts`. If you have access to the source `.jsonl` (path is in `session.filePath`), you can read more of the conversation.
-3. Edit the session's `category` field in `report.json` in place (Edit tool) to one of: `implementation`, `refactor`, `debugging`, `exploration`, `planning`, `docs`, `review`, `devops`, `testing`, `meta`, `ask`, `other`.
-4. Re-emit the markdown / re-totalled JSON via the `--rerender` mode — it reads `report.json`, recomputes totals, and writes the artifacts you ask for:
+1. Read `<output-dir>/report.json` (Read tool). Iterate sessions where `needsReview` is `true`.
+2. For each flagged session, look at `firstPrompt`, `userMessages`, `toolCounts`, and `filesTouched`. If a session is genuinely ambiguous, read the source `.jsonl` at `session.filePath` for full context.
+3. Decide bidirectionally — a flagged session can be promoted *or* demoted. The `reviewReason` tells you what the heuristic was unsure about:
+
+   | `reviewReason` (current `category`) | What to consider |
+   |---|---|
+   | `other` | Heuristic gave up. Re-categorize to whichever bucket actually fits — frequently `implementation`, `exploration`, or `debugging`. |
+   | `discarded` | Trivial-shape match. **Promote** to e.g. `ask` or `exploration` if the short session was actually meaningful. |
+   | `meta` (keyword match) | Mentioned `claude code` / `hook` / `skill` / `config` but may be trivial. **Demote** to `discarded` if no real work happened. |
+   | `ask` (shape-based match) | Short, few-turn, no-edits. **Demote** to `discarded` if it was empty, or move to `exploration` if there were many reads. |
+
+4. Edit `category` in place (Edit tool) to one of: `implementation`, `refactor`, `debugging`, `exploration`, `planning`, `docs`, `review`, `devops`, `testing`, `meta`, `ask`, `discarded`, `other`. You do not need to clear `needsReview` / `reviewReason` — `--rerender` only touches the totals block.
+5. Re-emit the artifacts via `--rerender`:
 
    ```bash
    python3 ${CLAUDE_SKILL_DIR}/generate.py --rerender --output-dir <output-dir>
@@ -85,7 +94,7 @@ After running `generate.py`, the report has heuristic categories. For sessions w
 
    Pass `--format md` (or `json`) to limit which artifacts are rewritten.
 
-Skip this pass unless the user explicitly asks for richer categorization or you can see most categories landed on `other`.
+Skip this pass unless the user explicitly asks for richer categorization or a meaningful chunk of sessions are flagged. Refinement is well-defined but optional.
 
 ### Jira ticket enrichment via the Atlassian MCP
 

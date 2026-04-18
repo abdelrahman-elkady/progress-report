@@ -45,6 +45,19 @@ Sessions are categorized with heuristic keyword + tool-usage rules into one of 1
 
 The optional LLM refinement pass (documented in [SKILL.md](SKILL.md)) can override categories in place before a `--rerender`.
 
+### Review flags
+
+Each `Session` carries two derived fields that signal whether the heuristic was uncertain:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `needsReview` | boolean | `true` iff `category` is one of `other`, `discarded`, `meta`, `ask` — the four buckets the heuristic is least confident about. |
+| `reviewReason` | string \| null | Short hint describing what the heuristic was uncertain about. Non-null iff `needsReview` is `true`. |
+
+**Contract for post-processing.** The optional refinement pass (see [SKILL.md](SKILL.md)) iterates `sessions` where `needsReview == true`, re-inspects each, and may overwrite `category` with any value in the enum (bidirectional — promote `discarded` → `ask`, demote `meta` → `discarded`, etc.). After edits, `--rerender` recomputes `totals.categories`, `totals.categoryMinutes`, and `minutesByDay[*].categories` from the updated per-session categories.
+
+`needsReview` / `reviewReason` are **derived from `category` at generation time** and are not re-derived by `--rerender`. Consumers that want a fresh flag from a post-edit category should compute it themselves from the enum membership above. Pre-v1.1.0 reports passed through `--rerender` are auto-backfilled from each session's existing `category`.
+
 ## Notes for dashboard consumers
 
 - **`minutesByDay` keys are pre-seeded** for every date in the window (including days with no activity), so you can iterate them directly without filling gaps.

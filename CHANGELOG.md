@@ -12,6 +12,21 @@ Consumers of `report.json` should review this when updating.
 
 _(nothing yet)_
 
+## 1.1.0
+
+### Added
+
+- **`needsReview`** (Session, boolean) — `true` iff the final category is one of
+  `other`, `discarded`, `meta`, `ask`. Flags the four uncertain heuristic buckets
+  for the optional post-generation refinement pass documented in SKILL.md.
+
+- **`reviewReason`** (Session, string | null) — Short, per-category hint
+  describing what the heuristic was uncertain about. Non-null iff `needsReview`
+  is true; `null` otherwise.
+
+Additive only; no breaking changes. Pre-v1.1.0 reports passed through
+`--rerender` are auto-backfilled from each session's existing `category`.
+
 ## 1.0.0
 
 ### Added
