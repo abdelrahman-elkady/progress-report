@@ -118,7 +118,7 @@ The canonical signal for which sessions to re-inspect is **`session.needsReview`
 
 This keeps **zero new Python deps** and the LLM intelligence comes "for free" from whichever agent invokes the skill.
 
-⚠️ **Never embed multi-line scripts in SKILL.md.** Anything beyond a single shell call belongs behind a flag in `generate.py`. Inline `python3 -c` blobs (a) can't be linted or tested, (b) drift from real code, (c) get mangled on LLM rewrites due to nested quoting, and (d) `validate_bash.py` rejects any `python3` invocation that doesn't include `generate.py` as a token, so they're dead-on-arrival anyway. The `--rerender` flag exists specifically to replace one such inline blob.
+⚠️ **Never embed multi-line scripts in SKILL.md.** Anything beyond a single shell call belongs behind a flag in `generate.py`. Inline `python3 -c` blobs (a) can't be linted or tested, (b) drift from real code, (c) get mangled on LLM rewrites due to nested quoting, and (d) `validate_bash.py` forces a user prompt for any `python3` invocation that doesn't target the bundled `generate.py`, so they'd require manual approval every run even if they technically worked. The `--rerender` flag exists specifically to replace one such inline blob.
 
 ⚠️ **Don't add a hard dep on any LLM library.** If you want richer categorization, gate it behind a flag and keep the SKILL.md refinement pass as the zero-dep default.
 
@@ -171,7 +171,7 @@ User and assistant text messages are kept **in full** so consumers can display t
 ## Other gotchas
 
 - **`SKIP_TYPES` in `scanner.py`** is a denylist for `.jsonl` record types we never care about. New unknown record types go here, not into the parsing branches.
-- **Don't try to "tighten" `allowed-tools` to a script-specific path.** The matcher does literal glob matching against the command string and does **not** expand `${CLAUDE_SKILL_DIR}` or any env var. A rule like `Bash(python3 ${CLAUDE_SKILL_DIR}/generate.py *)` would never match; a hardcoded absolute path is non-portable; `Bash(python3 */generate.py *)` is security theater. The skill intentionally pairs broad `allowed-tools: Bash(python3 *)` with the strict [`validate_bash.py`](validate_bash.py) PreToolUse hook, which resolves the script path from `__file__` and so always points at *this* skill's `generate.py`. **The hook is the boundary; `allowed-tools` is just the gate that lets requests reach the hook.**
+- **Don't try to "tighten" `allowed-tools` to a script-specific path.** The matcher does literal glob matching against the command string and does **not** expand `${CLAUDE_SKILL_DIR}` or any env var. A rule like `Bash(python3 ${CLAUDE_SKILL_DIR}/generate.py *)` would never match; a hardcoded absolute path is non-portable; `Bash(python3 */generate.py *)` is security theater. The skill intentionally pairs broad `allowed-tools: Bash(python3 *)` with the [`validate_bash.py`](validate_bash.py) PreToolUse hook, which resolves the script path from `__file__` and lets *this* skill's `generate.py` through while returning `permissionDecision: "ask"` for anything else — so unexpected `python3` invocations force a user prompt rather than running silently. **The hook is where the bundled-vs-unknown decision is made; `allowed-tools` is just the gate that lets requests reach the hook.**
 
 ## Smoke-testing changes
 

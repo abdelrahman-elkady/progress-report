@@ -39,33 +39,36 @@ Hard rules:
 
 The `reasons` array on each `CorrelationMatch` lists exactly which signals fired (e.g. `["branch", "files(4)", "time"]`). This is load-bearing for debugging false positives.
 
-## Active duration (v1.2.0+)
+## Active duration (v2.0.0+)
 
-`activeDurationMin` is **work-on-this-task time** — user engagement **plus** Claude working on the user's behalf. It's computed by classifying every inter-record gap and summing the credited portion.
+`activeDurationMin` is **work-on-this-task time** — user engagement **plus** Claude working on the user's behalf. It's computed by classifying every inter-record gap and summing the credited portion, with each kind capped to bound away-time.
 
 ### Gap taxonomy
 
 Each record's `timestamp` marks when that turn completed, so every inter-record gap is classifiable from the two endpoints alone:
 
-| `kind`         | From → To                                               | Meaning                                         | Active credit         |
-|----------------|---------------------------------------------------------|-------------------------------------------------|-----------------------|
-| `tool_runtime` | assistant-with-`tool_use` → user-with-`tool_result`     | Claude running a tool                           | **Full gap**          |
-| `inference`    | user → assistant                                        | Claude thinking / generating                    | **Full gap**          |
-| `user_pause`   | assistant (no pending tool_use) → user (real prompt)    | User reading / typing / **or away**             | **`min(gap, cap)`**   |
-| `same_turn`    | same speaker, < 5 s apart                               | Logical continuation (one turn split in blocks) | Full gap              |
+| `kind`         | From → To                                             | Meaning                                            | Cap                          |
+|----------------|-------------------------------------------------------|----------------------------------------------------|------------------------------|
+| `tool_runtime` | assistant-with-`tool_use` → user                      | Tool running — **or user away during approval**    | `--tool-runtime-cap-min` (30)|
+| `inference`    | user → anything                                       | Claude generating — **or user typed then walked**  | `--tool-runtime-cap-min` (30)|
+| `user_pause`   | assistant (no pending tool_use) → user                | User reading / typing / **or away**                | `--user-pause-cap-min` (10)  |
+| `same_turn`    | same speaker, < 5 s apart                             | Logical continuation (one turn split in blocks)    | uncapped                     |
 
-Only `user_pause` is capped. The default cap is **10 min** (configurable via `--user-pause-cap-min`); any excess becomes idle time.
+A gap's contribution to `activeDurationMin` is `min(gap_sec, cap)`; the excess becomes idle time. `tool_runtime` and `inference` share one cap because the same "user walked away" failure mode produces both (e.g. an unapproved `tool_use` shows as multi-hour `tool_runtime`; a `/slash-command` the user typed then abandoned shows as multi-hour `inference`). `same_turn` is intentionally uncapped — same-speaker records < 5 s apart are a logical continuation of one turn, not a pause.
 
 ### Session fields
 
 | Field | Meaning |
 |---|---|
 | `activeDurationMin` | Sum of credited gap time, in minutes. |
-| `idleSec` | Seconds stripped from active — the excess of over-cap `user_pause` gaps, in seconds. |
+| `idleSec` | Seconds stripped from active duration across every capped kind. Equals `sum(g.sec - g.creditedSec)` across `gaps[]`. |
+| `idleBreakdownSec` | `{user_pause, tool_runtime, inference}` — stripped seconds by kind. Values sum to `idleSec`. |
 | `userPauseCount` | Number of `user_pause` gaps (any duration). |
 | `longestUserPauseSec` | Longest single `user_pause`, seconds. |
-| `gaps[]` | Only over-cap `user_pause` gaps. Each entry has `startedAt`, `endedAt`, `sec`, `kind`, `creditedSec`. `idleSec == sum(g.sec - g.creditedSec)`. |
-| `segments[]` | Contiguous activity bursts split by over-cap gaps. Each has `startedAt`, `endedAt`, `sec`, `messageCount`. |
+| `gaps[]` | Every over-cap gap of any non-`same_turn` kind. Each entry has `startedAt`, `endedAt`, `sec`, `kind`, `creditedSec`. |
+| `segments[]` | Contiguous activity bursts split by over-cap gaps of any kind. Each has `startedAt`, `endedAt`, `sec`, `messageCount`. |
+
+`Segment.messageCount` counts *conversational turns* — user records with typed content or slash commands, plus assistant records with at least one non-empty text block. Synthetic `tool_result`-only user records and `tool_use`-only assistant records are excluded, so this number reflects the conversation shape, not raw record volume.
 
 ### Active-review flags
 
@@ -74,13 +77,13 @@ Each `Session` also carries active-duration review flags, **independent of the c
 | Field | Type | Meaning |
 |---|---|---|
 | `needsActiveReview` | boolean | `true` when the active calculation is worth a second look (see rules below). |
-| `activeReviewReason` | string \| null | One of `long_single_pause`, `high_idle_ratio`, `many_long_pauses`. Null when `needsActiveReview` is false. |
+| `activeReviewReason` | string \| null | One of `long_single_pause`, `high_idle_ratio`, `many_long_gaps`. Null when `needsActiveReview` is false. |
 
 A session is flagged when **any** of:
 
-- `longestUserPauseSec > 3600` — a single gap over 1 hour (`long_single_pause`)
-- `idleSec / durationSec > 0.5` — more than half the window is stripped idle time (`high_idle_ratio`)
-- `len(gaps) >= 5` — at least 5 over-cap `user_pause` gaps (`many_long_pauses`)
+- `longestUserPauseSec > 3600` — a single `user_pause` over 1 hour (`long_single_pause`)
+- `idleSec / durationSec > 0.5` — more than half the window was stripped as idle (`high_idle_ratio`)
+- `len(gaps) >= 5` — at least 5 over-cap gaps of any kind (`many_long_gaps`)
 
 These flags feed the optional refinement pass documented in [SKILL.md](SKILL.md), which can edit `activeDurationMin` or `gaps` in place and re-emit via `--rerender`.
 

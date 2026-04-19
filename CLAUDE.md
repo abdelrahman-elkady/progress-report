@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A Claude Code **skill** (not a standalone Python package). It ships as a directory that users copy into `~/.claude/skills/`. `SKILL.md` is the manifest Claude Code loads; `generate.py` is the entry point invoked via the skill's `Bash(python3 *)` permission, gated by `validate_bash.py` as a `PreToolUse` hook.
+A Claude Code **skill** (not a standalone Python package). It ships as a directory that users copy into `~/.claude/skills/`. `SKILL.md` is the manifest Claude Code loads; `generate.py` is the entry point invoked via the skill's `Bash(python3 *)` permission, mediated by `validate_bash.py` as a `PreToolUse` hook (auto-approves the bundled script, prompts for anything else).
 
 Authoritative deep-context docs already exist — read them before extending:
 - [CONTEXT.md](CONTEXT.md) — design history, architectural decisions, gotchas (⚠️ markers indicate invariants not to break)
@@ -62,7 +62,7 @@ Most of these are spelled out in detail in [CONTEXT.md](CONTEXT.md). Highlights:
 - **Portability is non-negotiable.** No hardcoded paths, usernames, orgs, or environment assumptions. Every default must be runtime-derivable (`Path.home()`, `gh api user`, `git remote get-url`, `datetime.now().astimezone().tzinfo`). When in doubt, ask before guessing.
 - **Stdlib only.** No pip deps. Tooling deps limited to `python3`, `gh`, and optionally the Atlassian MCP (must degrade gracefully if absent). Don't pull in `jq`, `rg`, `jsonschema`, LLM libraries, etc.
 - **Repo identity comes from `git remote`, not directory names.** Always call `lib.utils.repo_name(cwd)`. Path-segment tricks break on monorepos.
-- **The script never calls an LLM.** Richer categorization / Jira enrichment is delegated to the calling agent via the `--rerender` post-pass pattern. Don't embed multi-line Python in `SKILL.md` — `validate_bash.py` will reject it, and it can't be linted or tested.
+- **The script never calls an LLM.** Richer categorization / Jira enrichment is delegated to the calling agent via the `--rerender` post-pass pattern. Don't embed multi-line Python in `SKILL.md` — `validate_bash.py` will force a user prompt for any `python3` invocation other than the bundled `generate.py`, and inline blobs can't be linted or tested.
 - **Window in local TZ, output in UTC.** Don't leak local TZ into `report.json`.
 - **Keep correlation `reasons` populated and preserve the score-inequality invariants** called out in [CONTEXT.md](CONTEXT.md) (ask > exploration, etc.). Uncorrelated sessions stay in the report.
 
@@ -87,4 +87,4 @@ Implementation plans live in `ai-docs/plans/` and are prefixed with a 3-digit ze
 
 ## The Bash hook
 
-`validate_bash.py` is a `PreToolUse` hook that rejects any `python3` invocation other than `generate.py`. `allowed-tools: Bash(python3 *)` in `SKILL.md` is intentionally broad — the hook is the real security boundary. Don't try to tighten `allowed-tools` to a path-specific matcher; glob matching does not expand `${CLAUDE_SKILL_DIR}` and baking an absolute path breaks portability.
+`validate_bash.py` is a `PreToolUse` hook that returns `permissionDecision: "ask"` for any `python3` invocation other than the bundled `generate.py`, so unexpected scripts force an explicit user prompt instead of being silently auto-approved or hard-rejected. `allowed-tools: Bash(python3 *)` in `SKILL.md` is intentionally broad — the hook is where the bundled-vs-unknown decision is made. Don't try to tighten `allowed-tools` to a path-specific matcher; glob matching does not expand `${CLAUDE_SKILL_DIR}` and baking an absolute path breaks portability.

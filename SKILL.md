@@ -1,7 +1,7 @@
 ---
 name: progress-report-skill
 description: Generate a progress report correlating Claude Code sessions with the user's GitHub PR activity. Scans local Claude sessions in a configurable date window (default last 7 days), fetches the user's authored + reviewed PRs targeting master/main (configurable via --branches) via gh CLI, correlates them by repo/branch/file overlap/Jira ID/time, categorizes each session, and outputs structured JSON and Markdown. Use when the user wants to see what they worked on, get a Claude+GitHub activity summary, generate a progress digest, or correlate Claude sessions with shipped PRs. See report.schema.json for the formal contract and REPORT_SCHEMA.md for consumer guidance.
-argument-hint: "[--days N | --from YYYY-MM-DD --to YYYY-MM-DD] [--week-start mon|tue|wed|thu|fri|sat|sun] [--user LOGIN] [--branches a,b,c] [--output-dir PATH] [--format json|md|all] [--no-reviews] [--clear-cache] [--user-pause-cap-min MINUTES] [--rerender]"
+argument-hint: "[--days N | --from YYYY-MM-DD --to YYYY-MM-DD] [--week-start mon|tue|wed|thu|fri|sat|sun] [--user LOGIN] [--branches a,b,c] [--output-dir PATH] [--format json|md|all] [--no-reviews] [--clear-cache] [--user-pause-cap-min MINUTES] [--tool-runtime-cap-min MINUTES] [--rerender]"
 allowed-tools: Bash(python3 *), Bash(gh *)
 hooks:
   PreToolUse:
@@ -124,6 +124,8 @@ Both passes below run **by default** after `generate.py` finishes. Skip only if 
    ```
 
    Pass `--format md` (or `json`) to limit which artifacts are rewritten.
+
+5. **Summarize the changes.** After re-rendering, report which sessions were recategorized as `from → to` transitions (identify each by session id or name), plus a count of sessions left unchanged. Skip this summary only if no categories were edited.
 
 Skip only if the user explicitly opts out, or if no sessions are flagged.
 
