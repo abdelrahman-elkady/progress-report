@@ -125,6 +125,8 @@ Both passes below run **by default** after `generate.py` finishes. Skip only if 
 
    Pass `--format md` (or `json`) to limit which artifacts are rewritten.
 
+5. **Summarize the changes.** After re-rendering, report which sessions were recategorized as `from → to` transitions (identify each by session id or name), plus a count of sessions left unchanged. Skip this summary only if no categories were edited.
+
 Skip only if the user explicitly opts out, or if no sessions are flagged.
 
 ### Jira ticket enrichment via the Atlassian MCP
