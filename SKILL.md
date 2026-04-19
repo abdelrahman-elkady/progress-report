@@ -13,13 +13,13 @@ hooks:
 
 # Progress report
 
-Generates a report of what the user worked on in Claude Code over a date window (default: last 7 days), correlated with their GitHub PR activity that landed on `master` / `main` / `integration` branches. Outputs structured JSON and Markdown — visualization is handled by a separate dashboard project that consumes `report.json` (see [REPORT_SCHEMA.md](REPORT_SCHEMA.md) for the contract). Optionally enriches the report with Jira ticket context and LLM-refined session categories.
+Generates a report of what the user worked on in Claude Code over a date window (default: last 7 days), correlated with their GitHub PR activity that landed on `master` / `main` / `staging` branches. Outputs structured JSON and Markdown — visualization is handled by a separate dashboard project that consumes `report.json` (see [REPORT_SCHEMA.md](REPORT_SCHEMA.md) for the contract). Optionally enriches the report with Jira ticket context and LLM-refined session categories.
 
 ## What it does
 
 1. **Scans** `~/.claude/projects/**/*.jsonl` for sessions in the window. Resolves each session's repo via `git remote get-url` (not directory name) so monorepo nesting works. Subagent and sidechain sessions are skipped.
 2. **Fetches** the GitHub user's authored PRs (`gh search prs --author=...`) and reviewed PRs (`gh search prs --reviewed-by=...`), enriches each with `head`, `base`, `mergedAt`, file list, and Jira IDs extracted from the title. Concurrent fetching via a thread pool, with a persistent cache at `<output-dir>/_pr-cache.json`.
-3. **Filters** PRs to those merged into the configured target branches (default `master,main` — pass `--branches` to widen, e.g. `--branches master,main,integration`) inside the window.
+3. **Filters** PRs to those merged into the configured target branches (default `master,main` — pass `--branches` to widen, e.g. `--branches master,main,staging`) inside the window.
 4. **Correlates** sessions ↔ authored PRs with a confidence score:
    - `branch` (+5) — session's `gitBranch` matches PR head ref
    - `files(N)` (+N+1) — session-touched files overlap with PR files (full repo-relative path)
@@ -42,7 +42,36 @@ Default `<output-dir>` is `~/claude-progress-report/`.
 
 ## Run
 
-Default invocation (last 7 days, current `gh` user, all formats):
+### Interactive prompt when invoked with no arguments
+
+If the user invoked this skill with **no arguments at all**, first collect preferences via a single `AskUserQuestion` call, then run `generate.py`. Present the defaults explicitly as the first option so the user can accept them, pick a preset, or choose "Other" (always available) to supply a custom value. Build the command using only the flags the user chose to change — if they keep the default on a question, **omit that flag entirely** so the script's own default applies.
+
+Ask all four questions in a single call:
+
+1. **Time window** (header: `Window`)
+   - `Last 7 days (default)` → no flag
+   - `Last 14 days` → `--days 14`
+   - `Last 30 days` → `--days 30`
+   - Other: parse as `--days N`, or `--from YYYY-MM-DD --to YYYY-MM-DD` if a range.
+
+2. **Output format** (header: `Format`)
+   - `JSON + Markdown (default)` → no flag
+   - `Markdown only` → `--format md`
+   - `JSON only` → `--format json`
+
+3. **Target branches** (header: `Branches`)
+   - `master, main (default)` → no flag
+   - `master, main, staging` → `--branches master,main,staging`
+   - `master, main, develop` → `--branches master,main,develop`
+   - Other: pass verbatim as `--branches <value>`.
+
+4. **Include PR reviews** (header: `Reviews`)
+   - `Authored + reviewed (default)` → no flag
+   - `Authored only` → `--no-reviews`
+
+If the user passed **any** argument (e.g. `--days 14`, a natural-language hint like "last 30 days", or an output path), skip this prompt and translate their arguments directly into flags.
+
+### Default invocation (last 7 days, current `gh` user, all formats)
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/generate.py
@@ -53,7 +82,7 @@ With explicit args:
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/generate.py \
   --days 14 \
-  --branches master,main,integration,develop \
+  --branches master,main,staging,develop \
   --output-dir ~/reports/sprint-23 \
   --format all
 ```

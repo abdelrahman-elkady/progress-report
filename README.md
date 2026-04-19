@@ -40,7 +40,7 @@ Or just ask naturally -- "what did I work on this week?", "generate a progress r
 ```
 /progress-report-skill --days 14
 /progress-report-skill --from 2026-03-01 --to 2026-03-31
-/progress-report-skill --branches master,main,integration
+/progress-report-skill --branches master,main,staging
 /progress-report-skill --format md
 ```
 
