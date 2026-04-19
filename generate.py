@@ -132,9 +132,13 @@ def _parse_args(argv=None):
                    help="Discard the cached PR detail file before fetching.")
     p.add_argument("--user-pause-cap-min", dest="user_pause_cap_min",
                    type=float, default=10, metavar="MINUTES",
-                   help="Cap each user_pause gap at this many minutes when computing "
-                        "activeDurationMin; the excess becomes idle time. Tool runtime "
-                        "and inference gaps are always fully credited. Default: 10.")
+                   help="Cap each user_pause gap (assistant → user, with no pending "
+                        "tool_use) at this many minutes; excess becomes idle. Default: 10.")
+    p.add_argument("--tool-runtime-cap-min", dest="tool_runtime_cap_min",
+                   type=float, default=30, metavar="MINUTES",
+                   help="Cap each tool_runtime and inference gap at this many minutes; "
+                        "excess becomes idle. Protects against tool_use approval waits "
+                        "being counted as active time. Default: 30.")
     p.add_argument("--rerender", action="store_true",
                    help="Skip scan/fetch/correlate. Load <output-dir>/report.json, "
                         "recompute totals, and re-emit the artifacts selected by --format. "
@@ -203,7 +207,11 @@ def main(argv=None) -> int:
 
     # Sessions
     print(f"[scan] sessions in {PROJECTS_DIR}")
-    sessions = scan_sessions(PROJECTS_DIR, window_start, window_end, user_pause_cap_min=args.user_pause_cap_min)
+    sessions = scan_sessions(
+        PROJECTS_DIR, window_start, window_end,
+        user_pause_cap_min=args.user_pause_cap_min,
+        tool_runtime_cap_min=args.tool_runtime_cap_min,
+    )
     print(f"  found {len(sessions)} sessions in window")
 
     # PR searches: authored + reviewed are independent gh subprocesses, run in parallel

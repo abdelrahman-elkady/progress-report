@@ -12,6 +12,67 @@ Consumers of `report.json` should review this when updating.
 
 _(nothing yet)_
 
+## 2.0.0
+
+### ⚠️ Changed — `activeDurationMin` formula (loud callout, **breaking**)
+
+**Numbers will shift on re-run, often substantially downward.** v1.2.0
+credited `tool_runtime` and `inference` gaps in full under the assumption that
+tools complete in bounded time. That assumption breaks whenever a `tool_use`
+needs user approval and the user walks away: the classifier saw tool-runtime
+shape and credited multi-hour (or multi-day) spans as active time. In practice
+this silently inflated `activeDurationMin` on long sessions — outliers in the
+test dataset carried hundreds of hours of mis-credited idle time.
+
+**After (v2.0.0):** all non-`same_turn` gap kinds are capped.
+
+- `user_pause` → `--user-pause-cap-min` (default **10 min**, unchanged)
+- `tool_runtime` and `inference` → new `--tool-runtime-cap-min` (default **30 min**)
+- `same_turn` → uncapped (same-speaker < 5 s is a logical continuation)
+
+Every over-cap gap (any kind) is now emitted into `gaps[]` and splits
+`segments[]`. `idleSec` sums stripped time across every kind, so the
+conservation invariant `durationMin - activeDurationMin == idleSec / 60` holds
+end-to-end. The new `idleBreakdownSec` field exposes the per-kind split.
+
+### Added
+
+- **`idleBreakdownSec`** (Session, required object) — `{user_pause,
+  tool_runtime, inference}` breakdown of stripped idle time, summing to
+  `idleSec`. Lets consumers label e.g. "67 h of tool-runtime was stripped"
+  separately from "2 h of user pauses was stripped".
+- **`--tool-runtime-cap-min MINUTES`** (CLI flag, default 30) — caps each
+  `tool_runtime` and `inference` gap. Excess becomes idle.
+
+### Changed (breaking)
+
+- **`activeDurationMin` semantics** — see loud callout above. Cached historical
+  values will not match; re-run `generate.py` for fresh numbers.
+- **`idleSec` semantics** — now sums stripped time across every capped kind
+  (`user_pause` + `tool_runtime` + `inference`), not only `user_pause`.
+- **`gaps[]` contents** — `tool_runtime` and `inference` gaps are now emitted
+  when over their cap. Previously `gaps[]` only ever contained `user_pause`
+  entries regardless of kind.
+- **`segments[]` splitting** — segments split on over-cap gaps of any kind,
+  not only `user_pause`. Fixes the v1.2.0 case where a multi-hour `tool_runtime`
+  gap glued two real bursts into a single segment with a misleading `sec`
+  value.
+- **`Segment.messageCount` semantics** — now counts conversational turns
+  (user records with typed content / slash commands + assistant records with
+  at least one non-empty text block). Synthetic `tool_result`-only user
+  records and `tool_use`-only assistant records are excluded. Values drop for
+  tool-heavy sessions.
+- **`activeReviewReason` enum** — `many_long_pauses` renamed to
+  `many_long_gaps`, since the rule now counts over-cap gaps of any kind.
+
+### Backward compatibility
+
+- `--rerender` on a v1.x `report.json` backfills `idleBreakdownSec` with zeros
+  so the re-emit validates against the v2.0.0 schema. For fresh, correct
+  numbers, re-run `generate.py`.
+- Pre-v1.2.0 reports passed through `--rerender` still get the v1.2.0 session
+  fields backfilled (unchanged) plus the new v2.0.0 `idleBreakdownSec` field.
+
 ## 1.2.0
 
 ### ⚠️ Changed — `activeDurationMin` formula (loud callout)

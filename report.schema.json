@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "progress-report-skill/report/v1.2.0",
+  "$id": "progress-report-skill/report/v2.0.0",
   "title": "Progress Report",
   "description": "Output schema for the progress-report-skill. All timestamps are UTC ISO 8601. See REPORT_SCHEMA.md for usage notes and consumer guidance.",
   "type": "object",
@@ -280,6 +280,7 @@
         "durationMin",
         "activeDurationMin",
         "idleSec",
+        "idleBreakdownSec",
         "userPauseCount",
         "longestUserPauseSec",
         "gaps",
@@ -355,11 +356,31 @@
         },
         "activeDurationMin": {
           "type": "number",
-          "description": "Active duration in minutes. Sum of credited gap time (tool runtime + inference always fully credited; each `user_pause` gap capped at `--user-pause-cap-min`, default 10)."
+          "description": "Active duration in minutes. Sum of credited gap time across all kinds. `user_pause` gaps are capped at `--user-pause-cap-min` (default 10); `tool_runtime` and `inference` gaps are capped at `--tool-runtime-cap-min` (default 30); `same_turn` gaps are uncapped. `durationMin - activeDurationMin` equals `idleSec / 60` (conservation)."
         },
         "idleSec": {
           "type": "number",
-          "description": "Seconds stripped from active duration because of over-cap user pauses (i.e. `sum(max(0, gap.sec - cap))` across user_pause gaps)."
+          "description": "Seconds stripped from active duration across every capped kind: `sum(max(0, gap.sec - cap))` over `user_pause` + `tool_runtime` + `inference` gaps. Equals `sum(g.sec - g.creditedSec)` across `gaps[]`."
+        },
+        "idleBreakdownSec": {
+          "type": "object",
+          "required": ["user_pause", "tool_runtime", "inference"],
+          "properties": {
+            "user_pause": {
+              "type": "number",
+              "description": "Stripped seconds attributable to over-cap `user_pause` gaps."
+            },
+            "tool_runtime": {
+              "type": "number",
+              "description": "Stripped seconds attributable to over-cap `tool_runtime` gaps (tool approval waits, long tool runs)."
+            },
+            "inference": {
+              "type": "number",
+              "description": "Stripped seconds attributable to over-cap `inference` gaps."
+            }
+          },
+          "additionalProperties": false,
+          "description": "Per-kind breakdown of stripped idle time. Values sum to `idleSec`. Useful for separating e.g. 'we threw away 67 h of tool runtime' from 'we threw away 2 h of user pauses'."
         },
         "userPauseCount": {
           "type": "integer",
@@ -372,12 +393,12 @@
         "gaps": {
           "type": "array",
           "items": { "$ref": "#/$defs/Gap" },
-          "description": "Over-cap `user_pause` gaps (raw sec > cap). Under-cap gaps and tool_runtime/inference gaps are NOT emitted — the array would balloon. `idleSec` is reconstructible as `sum(g.sec - g.creditedSec)`."
+          "description": "Over-cap gaps of any kind (`user_pause`, `tool_runtime`, `inference`). Under-cap gaps and `same_turn` gaps are NOT emitted — the array would balloon. `idleSec` is reconstructible as `sum(g.sec - g.creditedSec)`."
         },
         "segments": {
           "type": "array",
           "items": { "$ref": "#/$defs/Segment" },
-          "description": "Contiguous activity bursts split by over-cap gaps. Useful for timeline visualizers. Always at least one entry if the session has any activity."
+          "description": "Contiguous activity bursts split by over-cap gaps of any kind. Useful for timeline visualizers. Always at least one entry if the session has any activity."
         },
         "needsActiveReview": {
           "type": "boolean",
@@ -385,7 +406,7 @@
         },
         "activeReviewReason": {
           "type": ["string", "null"],
-          "description": "Short tag for why `needsActiveReview` is true (`long_single_pause`, `high_idle_ratio`, `many_long_pauses`). Null when `needsActiveReview` is false."
+          "description": "Short tag for why `needsActiveReview` is true (`long_single_pause`, `high_idle_ratio`, `many_long_gaps`). Null when `needsActiveReview` is false."
         },
         "userMsgCount": {
           "type": "integer",
@@ -605,11 +626,11 @@
         "kind": {
           "type": "string",
           "enum": ["user_pause", "tool_runtime", "inference", "same_turn"],
-          "description": "Gap classification. Only `user_pause` gaps appear in `gaps[]`; the others are always fully credited and not emitted individually."
+          "description": "Gap classification. `same_turn` gaps are uncapped and never emitted; the other three kinds are capped and appear in `gaps[]` when the raw duration exceeds the kind-specific cap."
         },
         "creditedSec": {
           "type": "number",
-          "description": "Seconds of this gap counted toward `activeDurationMin`. For over-cap `user_pause` gaps this equals the cap; `sec - creditedSec` is the stripped idle time."
+          "description": "Seconds of this gap counted toward `activeDurationMin`. For over-cap gaps this equals the kind-specific cap (`--user-pause-cap-min` for `user_pause`, `--tool-runtime-cap-min` for `tool_runtime`/`inference`); `sec - creditedSec` is the stripped idle time."
         }
       },
       "additionalProperties": false
@@ -634,7 +655,7 @@
         },
         "messageCount": {
           "type": "integer",
-          "description": "Number of user+assistant records in this segment"
+          "description": "Number of conversational-turn records in this segment. Counts user records with real user-authored content (typed messages or slash commands) and assistant records with at least one non-empty text block; excludes synthetic `tool_result`-only user records and `tool_use`-only assistant records."
         }
       },
       "additionalProperties": false
