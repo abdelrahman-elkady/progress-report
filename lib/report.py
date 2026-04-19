@@ -35,7 +35,10 @@ def _minutes_by_day(
     by_day: dict[str, dict] = {}
     d = start_date
     while d < end_date:
-        by_day[d.isoformat()] = {"minutes": 0.0, "activeMinutes": 0.0, "sessions": 0, "categories": {}}
+        by_day[d.isoformat()] = {
+            "minutes": 0.0, "activeMinutes": 0.0, "idleMinutes": 0.0,
+            "sessions": 0, "categories": {},
+        }
         d += timedelta(days=1)
 
     first_day_iso = start_date.isoformat()
@@ -54,6 +57,7 @@ def _minutes_by_day(
         bucket = by_day[day]
         bucket["minutes"] += _session_duration(session, "durationMin")
         bucket["activeMinutes"] += _session_duration(session, "activeDurationMin")
+        bucket["idleMinutes"] += _session_duration(session, "idleMinutes")
         bucket["sessions"] += 1
         cat = session.get("category", "other")
         bucket["categories"][cat] = bucket["categories"].get(cat, 0) + 1
@@ -61,11 +65,14 @@ def _minutes_by_day(
     for bucket in by_day.values():
         bucket["minutes"] = round(bucket["minutes"], 1)
         bucket["activeMinutes"] = round(bucket["activeMinutes"], 1)
+        bucket["idleMinutes"] = round(bucket["idleMinutes"], 1)
     return by_day
 
 
 def _session_duration(session: dict, field: str) -> float:
-    """Read a duration field with fallback for active fields on old reports."""
+    """Read a duration field with fallbacks for derived and pre-v1.2.0 reports."""
+    if field == "idleMinutes":
+        return float(session.get("idleSec") or 0) / 60
     val = session.get(field)
     if val is None and field != "durationMin":
         val = session.get("durationMin")
@@ -168,6 +175,8 @@ def _compute_totals(
         "categoryMinutes": _sum_minutes(sessions, group_key="category", duration_key="durationMin"),
         "activeMinutesByRepo": _sum_minutes(sessions, group_key="repoShort", duration_key="activeDurationMin", default_group="unknown"),
         "activeCategoryMinutes": _sum_minutes(sessions, group_key="category", duration_key="activeDurationMin"),
+        "idleMinutesByRepo": _sum_minutes(sessions, group_key="repoShort", duration_key="idleMinutes", default_group="unknown"),
+        "idleCategoryMinutes": _sum_minutes(sessions, group_key="category", duration_key="idleMinutes"),
     }
     if window_start and window_end:
         totals["minutesByDay"] = _minutes_by_day(sessions, window_start, window_end)
@@ -188,6 +197,16 @@ def recompute_totals(report: dict) -> None:
             reason = review_reason(session.get("category", ""))
             session["needsReview"] = reason is not None
             session["reviewReason"] = reason
+        # Backfill gap-classification fields on pre-v1.2.0 reports so --rerender
+        # round-trips validate. The real values get recomputed on the next full
+        # generate run; here we only make the report self-consistent.
+        session.setdefault("idleSec", 0.0)
+        session.setdefault("userPauseCount", 0)
+        session.setdefault("longestUserPauseSec", 0.0)
+        session.setdefault("gaps", [])
+        session.setdefault("segments", [])
+        session.setdefault("needsActiveReview", False)
+        session.setdefault("activeReviewReason", None)
     ws = parse_iso(report.get("windowStart"))
     we = parse_iso(report.get("windowEnd"))
     report["totals"] = _compute_totals(
