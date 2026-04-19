@@ -3,14 +3,15 @@
 PreToolUse hook for the progress-report-skill skill.
 
 Reads a hook payload from stdin and decides whether to allow the Bash command.
-The skill only legitimately invokes python3 to run its bundled generate.py;
-any other python invocation while the skill is active is rejected.
+The skill's bundled `generate.py` runs silently; any other python invocation
+is downgraded to an explicit user prompt rather than hard-rejected, so users
+can still approve unexpected one-off commands.
 
 Non-python commands pass through (the harness still consults the regular
 permission rules — `gh *` from the skill's allowed-tools).
 
-Block contract: print a JSON PreToolUse hook response with permissionDecision
-set to "deny" and exit 0. Allow by exiting 0 with no output.
+Contract: print a JSON PreToolUse hook response with permissionDecision set
+to "ask" and exit 0 to force a prompt. Allow by exiting 0 with no output.
 """
 import json
 import os
@@ -22,12 +23,12 @@ ALLOWED_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gener
 _HOOK_PREFIX = "progress-report-skill hook"
 
 
-def deny(reason: str) -> None:
+def ask(reason: str) -> None:
     json.dump(
         {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
+                "permissionDecision": "ask",
                 "permissionDecisionReason": reason,
             }
         },
@@ -52,28 +53,28 @@ def main() -> None:
     if not re.search(r"\bpython[23]?\b", command):
         return
 
-    # Reject anything that could chain commands, redirect, substitute, or
-    # background. The skill's only legitimate python use is a single direct
-    # foreground invocation, so we can be strict.
-    forbidden_tokens = ("&&", "||", ";", "|", "`", "$(", ">", "<", "&")
-    for tok in forbidden_tokens:
+    # Chained commands, redirects, substitutions, or backgrounding all fall
+    # outside the skill's legitimate single-invocation use. Surface them for
+    # explicit approval instead of running silently.
+    suspicious_tokens = ("&&", "||", ";", "|", "`", "$(", ">", "<", "&")
+    for tok in suspicious_tokens:
         if tok in command:
-            deny(
-                f"{_HOOK_PREFIX}: forbidden shell metacharacter "
-                f"{tok!r} in python invocation: {command}"
+            ask(
+                f"{_HOOK_PREFIX}: shell metacharacter {tok!r} in python "
+                f"invocation — approve only if you intend this: {command}"
             )
 
     try:
         tokens = shlex.split(command)
     except ValueError as exc:
-        deny(f"{_HOOK_PREFIX}: could not parse command ({exc}): {command}")
+        ask(f"{_HOOK_PREFIX}: could not parse command ({exc}): {command}")
 
     # First token must be exactly python or python3 — no env-var prefixes
     # (PYTHONPATH=...), no wrappers (sudo python3), no -c, etc.
     if not tokens or tokens[0] not in ("python", "python3"):
-        deny(
-            f"{_HOOK_PREFIX}: python must be the first command word "
-            f"with no prefix or wrapper: {command}"
+        ask(
+            f"{_HOOK_PREFIX}: python is not the first command word "
+            f"(prefix or wrapper detected) — approve to proceed: {command}"
         )
 
     # The bundled generate.py path must be the *script* token (index 1),
@@ -82,9 +83,9 @@ def main() -> None:
     # generate.py is merely passed as a CLI argument to a different script.
     script_token = tokens[1] if len(tokens) > 1 else ""
     if script_token != ALLOWED_SCRIPT:
-        deny(
-            f"{_HOOK_PREFIX}: only {ALLOWED_SCRIPT} may be run "
-            f"via python3 while this skill is active. Refusing: {command}"
+        ask(
+            f"{_HOOK_PREFIX}: python3 invocation targets a script other than "
+            f"the bundled {ALLOWED_SCRIPT} — approve to proceed: {command}"
         )
 
     # Validation passed — exit 0 with no output to allow.
