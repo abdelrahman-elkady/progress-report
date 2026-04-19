@@ -44,9 +44,11 @@ Default `<output-dir>` is `~/claude-progress-report/`.
 
 ### Interactive prompt (no arguments)
 
-If invoked with **no arguments**, collect preferences via a single `AskUserQuestion` call before running `generate.py`. Present the default as the first option on each question. Build the command using only the flags the user changed — if they keep a default, **omit that flag entirely** so the script's own default applies.
+If invoked with **no arguments**, collect preferences via a single `AskUserQuestion` call (4 questions — the tool's per-call cap) before running `generate.py`. Present the default as the first option on each question. Build the command using only the flags the user changed — if they keep a default, **omit that flag entirely** so the script's own default applies.
 
-Ask all five questions in a single call:
+PR reviews are always included (authored + reviewed). Users who want authored-only can pass `--no-reviews` explicitly.
+
+Questions:
 
 1. **Time window** (header: `Window`)
    - `Last 7 days (default)` → no flag
@@ -65,12 +67,9 @@ Ask all five questions in a single call:
    - `master, main, develop` → `--branches master,main,develop`
    - Other: pass verbatim as `--branches <value>`.
 
-4. **Include PR reviews** (header: `Reviews`)
-   - `Authored + reviewed (default)` → no flag
-   - `Authored only` → `--no-reviews`
-
-5. **Output directory** (header: `Output dir`)
-   - `~/claude-progress-report (default)` → no flag
+4. **Output directory** (header: `Output dir`)
+   - `<cwd> (default)` → `--output-dir <cwd>` — resolve to the runtime working directory so the report lands next to the current project.
+   - `~/claude-progress-report` → no flag (script default).
    - Other: pass verbatim as `--output-dir <path>`.
 
 If the user passed any argument or natural-language hint (e.g. `--days 14`, "last 30 days", an output path), skip the prompt and translate their input directly into flags.
