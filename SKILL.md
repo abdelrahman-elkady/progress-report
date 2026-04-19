@@ -46,7 +46,7 @@ Default `<output-dir>` is `~/claude-progress-report/`.
 
 If invoked with **no arguments**, collect preferences via a single `AskUserQuestion` call before running `generate.py`. Present the default as the first option on each question. Build the command using only the flags the user changed — if they keep a default, **omit that flag entirely** so the script's own default applies.
 
-Ask all four questions in a single call:
+Ask all five questions in a single call:
 
 1. **Time window** (header: `Window`)
    - `Last 7 days (default)` → no flag
@@ -68,6 +68,10 @@ Ask all four questions in a single call:
 4. **Include PR reviews** (header: `Reviews`)
    - `Authored + reviewed (default)` → no flag
    - `Authored only` → `--no-reviews`
+
+5. **Output directory** (header: `Output dir`)
+   - `~/claude-progress-report (default)` → no flag
+   - Other: pass verbatim as `--output-dir <path>`.
 
 If the user passed any argument or natural-language hint (e.g. `--days 14`, "last 30 days", an output path), skip the prompt and translate their input directly into flags.
 
@@ -95,11 +99,13 @@ python3 ${CLAUDE_SKILL_DIR}/generate.py --from 2026-03-01 --to 2026-03-31
 
 After generation, tell the user the output paths and the headline counts (sessions, authored PRs, reviewed PRs, uncorrelated sessions).
 
-## Optional refinement passes (run after generation)
+## Refinement passes (run after generation)
+
+Both passes below run **by default** after `generate.py` finishes. Skip only if the user explicitly opts out.
 
 ### LLM category refinement
 
-`generate.py` sets `needsReview: true` with a `reviewReason` on the four uncertain buckets (`other`, `discarded`, `meta`, `ask`). Use these as the canonical signal — do not re-derive ambiguity rules.
+`generate.py` sets `needsReview: true` with a `reviewReason` on the four uncertain buckets (`other`, `discarded`, `meta`, `ask`). Use these as the canonical signal — do not re-derive ambiguity rules. **Always run this pass** when any session has `needsReview: true`.
 
 1. Read `<output-dir>/report.json`. For each session with `needsReview: true`, inspect `firstPrompt`, `userMessages`, `toolCounts`, and `filesTouched`. Read the source `.jsonl` at `session.filePath` if still ambiguous.
 2. Decide bidirectionally — flagged sessions can be promoted *or* demoted. `reviewReason` says what the heuristic was unsure about:
@@ -120,11 +126,11 @@ After generation, tell the user the output paths and the headline counts (sessio
 
    Pass `--format md` (or `json`) to limit which artifacts are rewritten.
 
-Skip unless the user asks for richer categorization or a meaningful chunk of sessions are flagged.
+Skip only if the user explicitly opts out, or if no sessions are flagged.
 
 ### Jira ticket enrichment via the Atlassian MCP
 
-Each PR row in `report.json` has a `jiraIds` array extracted from the PR title. To enrich with real ticket data:
+Each PR row in `report.json` has a `jiraIds` array extracted from the PR title. **Always run this pass** when the Atlassian MCP is connected (`mcp__claude_ai_Atlassian__getJiraIssue` available) and `report.prs[*].jiraIds` contains any IDs:
 
 1. Collect all unique Jira IDs across `report.prs[*].jiraIds`.
 2. For each ID, call `mcp__claude_ai_Atlassian__getJiraIssue` for summary, status, type, assignee.
@@ -135,9 +141,7 @@ Each PR row in `report.json` has a `jiraIds` array extracted from the PR title. 
    python3 ${CLAUDE_SKILL_DIR}/generate.py --rerender --output-dir <output-dir> --format md
    ```
 
-**Prerequisite:** Atlassian MCP connected (`mcp__claude_ai_Atlassian__getJiraIssue` available). If not, skip — the regex-level Jira ID extraction stands on its own.
-
-Skip unless the user asks for ticket summaries or "what business work shipped this week."
+Skip only if the Atlassian MCP is not connected (the regex-level Jira ID extraction stands on its own) or the user explicitly opts out.
 
 ## Notes
 
