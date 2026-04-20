@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .categorize import review_reason
+from .scanner import empty_idle_breakdown
 from .utils import now_utc, parse_iso
 
 SHORT_ID_LEN = 8
@@ -197,10 +198,12 @@ def recompute_totals(report: dict) -> None:
             reason = review_reason(session.get("category", ""))
             session["needsReview"] = reason is not None
             session["reviewReason"] = reason
-        # Backfill gap-classification fields on pre-v1.2.0 reports so --rerender
-        # round-trips validate. The real values get recomputed on the next full
-        # generate run; here we only make the report self-consistent.
+        # Backfill gap-classification fields for reports generated before a
+        # given field existed, so --rerender round-trips validate. Real values
+        # get recomputed on the next full generate run.
         session.setdefault("idleSec", 0.0)
+        if "idleBreakdownSec" not in session:
+            session["idleBreakdownSec"] = empty_idle_breakdown()
         session.setdefault("userPauseCount", 0)
         session.setdefault("longestUserPauseSec", 0.0)
         session.setdefault("gaps", [])

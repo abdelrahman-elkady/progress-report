@@ -47,6 +47,10 @@ GAP_TOOL_RUNTIME = "tool_runtime"
 GAP_INFERENCE = "inference"
 GAP_USER_PAUSE = "user_pause"
 
+
+def empty_idle_breakdown() -> dict[str, float]:
+    return {GAP_USER_PAUSE: 0.0, GAP_TOOL_RUNTIME: 0.0, GAP_INFERENCE: 0.0}
+
 # Thresholds for flagging `needsActiveReview`. Tuned from inspecting the
 # historical sample report; see ai-docs/plans/002-active-duration-gap-classification.md.
 LONG_PAUSE_SEC = 3600.0
@@ -56,7 +60,7 @@ MANY_LONG_PAUSES = 5
 # Values for session.activeReviewReason (mirrored in report.schema.json).
 REASON_LONG_PAUSE = "long_single_pause"
 REASON_HIGH_IDLE = "high_idle_ratio"
-REASON_MANY_PAUSES = "many_long_pauses"
+REASON_MANY_GAPS = "many_long_gaps"
 
 
 def _file_path_from_input(name: str, inp: dict) -> str | None:
@@ -86,45 +90,54 @@ def _segment_dict(start: datetime, end: datetime, msg_count: int) -> dict:
 
 
 def _classify_and_score_gaps(
-    records: list[dict], *, cap_sec: float,
+    records: list[dict], *, user_pause_cap_sec: float, tool_runtime_cap_sec: float,
 ) -> dict:
     """Classify every inter-record gap and return active/idle totals plus detail.
 
     Each `records` entry is `{ts: datetime, speaker: "user"|"assistant",
-    has_tool_use: bool}`. Gap kinds:
+    has_tool_use: bool, has_text: bool}`. Gap kinds:
 
       - `same_turn`     — same speaker, gap < 5s (thinking/text/tool_use split
-                          into separate records for the same turn). Full credit.
+                          into separate records for the same turn). Uncapped.
       - `tool_runtime`  — assistant-with-tool_use → user. Claude was running a
-                          tool on the user's behalf. Full credit.
-      - `inference`     — user → assistant. Claude was generating. Full credit.
+                          tool (or waiting on user approval for it). Capped at
+                          `tool_runtime_cap_sec`; excess becomes idle.
+      - `inference`     — user → anything else. Claude was generating (or the
+                          user typed then walked away). Capped at
+                          `tool_runtime_cap_sec`; excess becomes idle.
       - `user_pause`    — assistant (no pending tool_use) → user. The user was
-                          reading/typing or away. Credited up to `cap_sec`; the
-                          excess becomes idle time.
+                          reading/typing or away. Capped at `user_pause_cap_sec`;
+                          excess becomes idle.
 
-    Returns ready-to-serialize fields: `activeSec`, `idleSec` (both rounded to
-    1 dp), `gaps` (only over-cap user_pause gaps — under-cap and non-pause
-    gaps aren't emitted to keep the array bounded), `segments` (contiguous
-    bursts split by over-cap gaps), `userPauseCount`, `longestUserPauseSec`.
-    Records must be in chronological order — violations are tolerated as
-    no-op gaps (`gap_sec <= 0 → continue`).
+    Any over-cap gap of any kind is emitted into `gaps` and splits `segments`.
+    `segments[].messageCount` counts only records that carry real user-authored
+    or assistant-text content — synthetic `tool_result`-only user records and
+    `tool_use`-only assistant records are excluded.
+
+    Returns ready-to-serialize fields: `activeSec`, `idleSec`,
+    `idleBreakdownSec`, `gaps`, `segments`, `userPauseCount`,
+    `longestUserPauseSec`. Records must be in chronological order — violations
+    are tolerated as no-op gaps (`gap_sec <= 0 → continue`).
     """
     if not records:
         return {
             "activeSec": 0.0, "idleSec": 0.0,
+            "idleBreakdownSec": empty_idle_breakdown(),
             "gaps": [], "segments": [],
             "userPauseCount": 0, "longestUserPauseSec": 0.0,
         }
+    first_count = 1 if records[0].get("has_text") else 0
     if len(records) < 2:
         return {
             "activeSec": 0.0, "idleSec": 0.0,
+            "idleBreakdownSec": empty_idle_breakdown(),
             "gaps": [],
-            "segments": [_segment_dict(records[0]["ts"], records[0]["ts"], 1)],
+            "segments": [_segment_dict(records[0]["ts"], records[0]["ts"], first_count)],
             "userPauseCount": 0, "longestUserPauseSec": 0.0,
         }
 
     active_sec = 0.0
-    idle_sec = 0.0
+    idle_breakdown = empty_idle_breakdown()
     gaps_out: list[dict] = []
     segments_out: list[dict] = []
     user_pause_count = 0
@@ -132,14 +145,15 @@ def _classify_and_score_gaps(
 
     seg_start = records[0]["ts"]
     seg_end = records[0]["ts"]
-    seg_msgs = 1
+    seg_msgs = first_count
 
     for i in range(1, len(records)):
         prev, curr = records[i - 1], records[i]
         gap_sec = (curr["ts"] - prev["ts"]).total_seconds()
         if gap_sec <= 0:
             seg_end = curr["ts"]
-            seg_msgs += 1
+            if curr.get("has_text"):
+                seg_msgs += 1
             continue
 
         if prev["speaker"] == curr["speaker"] and gap_sec < SAME_TURN_MAX_SEC:
@@ -151,37 +165,48 @@ def _classify_and_score_gaps(
         else:
             kind = GAP_USER_PAUSE
 
+        if kind == GAP_SAME_TURN:
+            cap_sec = float("inf")
+        elif kind == GAP_USER_PAUSE:
+            cap_sec = user_pause_cap_sec
+        else:  # tool_runtime, inference
+            cap_sec = tool_runtime_cap_sec
+
+        credited = gap_sec if gap_sec <= cap_sec else cap_sec
+        active_sec += credited
+
         if kind == GAP_USER_PAUSE:
             user_pause_count += 1
             if gap_sec > longest_user_pause_sec:
                 longest_user_pause_sec = gap_sec
-            credited = min(gap_sec, cap_sec)
-            active_sec += credited
-            idle_sec += max(0.0, gap_sec - credited)
-            if gap_sec > cap_sec:
-                gaps_out.append({
-                    "startedAt": prev["ts"].isoformat(),
-                    "endedAt": curr["ts"].isoformat(),
-                    "sec": round(gap_sec, 1),
-                    "kind": kind,
-                    "creditedSec": round(credited, 1),
-                })
-                segments_out.append(_segment_dict(seg_start, seg_end, seg_msgs))
-                seg_start = curr["ts"]
-                seg_end = curr["ts"]
-                seg_msgs = 1
-                continue
-        else:
-            active_sec += gap_sec
+
+        if gap_sec > cap_sec:
+            idle_breakdown[kind] += gap_sec - credited
+            gaps_out.append({
+                "startedAt": prev["ts"].isoformat(),
+                "endedAt": curr["ts"].isoformat(),
+                "sec": round(gap_sec, 1),
+                "kind": kind,
+                "creditedSec": round(credited, 1),
+            })
+            segments_out.append(_segment_dict(seg_start, seg_end, seg_msgs))
+            seg_start = curr["ts"]
+            seg_end = curr["ts"]
+            seg_msgs = 1 if curr.get("has_text") else 0
+            continue
 
         seg_end = curr["ts"]
-        seg_msgs += 1
+        if curr.get("has_text"):
+            seg_msgs += 1
 
     segments_out.append(_segment_dict(seg_start, seg_end, seg_msgs))
+
+    idle_sec = sum(idle_breakdown.values())
 
     return {
         "activeSec": round(active_sec, 1),
         "idleSec": round(idle_sec, 1),
+        "idleBreakdownSec": {k: round(v, 1) for k, v in idle_breakdown.items()},
         "gaps": gaps_out,
         "segments": segments_out,
         "userPauseCount": user_pause_count,
@@ -194,19 +219,19 @@ def _active_review_flag(
     gaps: list[dict],
 ) -> tuple[bool, str | None]:
     """Decide whether the session's active-duration calculation is worth a
-    second look by the refinement pass. See plan 002 for rationale."""
+    second look by the refinement pass. See plans 002/003 for rationale."""
     if longest_user_pause_sec > LONG_PAUSE_SEC:
         return True, REASON_LONG_PAUSE
     if duration_sec > 0 and idle_sec / duration_sec > HIGH_IDLE_RATIO:
         return True, REASON_HIGH_IDLE
     if len(gaps) >= MANY_LONG_PAUSES:
-        return True, REASON_MANY_PAUSES
+        return True, REASON_MANY_GAPS
     return False, None
 
 
 def parse_session_file(
     path: Path, window_start: datetime, window_end: datetime,
-    *, user_pause_cap_min: float = 10.0,
+    *, user_pause_cap_min: float = 10.0, tool_runtime_cap_min: float = 30.0,
 ) -> dict | None:
     """Parse one .jsonl session file. Returns None if it's empty, sidechain, or
     falls outside the window.
@@ -219,7 +244,6 @@ def parse_session_file(
     modified = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
 
     first_user_ts: datetime | None = None
-    last_ts: datetime | None = None
     first_prompt = ""
     cwd = ""
     git_branch = ""
@@ -248,8 +272,6 @@ def parse_session_file(
                 if rec.get("isSidechain"):
                     continue
                 ts = parse_iso(rec.get("timestamp", ""))
-                if ts and (last_ts is None or ts > last_ts):
-                    last_ts = ts
                 msg = rec.get("message", {}) or {}
                 ts_iso = ts.isoformat() if ts else ""
 
@@ -261,18 +283,29 @@ def parse_session_file(
                         first_user_ts = ts
                         cwd = rec.get("cwd", cwd) or cwd
                         git_branch = rec.get("gitBranch", git_branch) or git_branch
-                    text = text_from_content(msg.get("content", "")).strip()
+                    raw_user = msg.get("content", "")
+                    text = text_from_content(raw_user).strip()
                     if text and not first_prompt:
                         first_prompt = text
                     if text:
                         user_messages.append({"ts": ts_iso, "text": text})
+                    # A synthetic user record (pure tool_result) doesn't count as a
+                    # conversational turn; a typed message or slash command does.
+                    if isinstance(raw_user, list):
+                        has_text = any(
+                            isinstance(b, dict) and b.get("type") != "tool_result"
+                            for b in raw_user
+                        )
+                    else:
+                        has_text = bool(text)
                     if ts:
-                        gap_records.append({"ts": ts, "speaker": "user", "has_tool_use": False})
+                        gap_records.append({"ts": ts, "speaker": "user", "has_tool_use": False, "has_text": has_text})
 
                 elif rtype == "assistant":
                     assistant_msgs += 1
                     raw = msg.get("content", "")
                     has_tool_use = False
+                    has_text = False
                     if isinstance(raw, list):
                         for b in raw:
                             if not isinstance(b, dict):
@@ -281,6 +314,7 @@ def parse_session_file(
                             if btype == "text":
                                 txt = b.get("text", "").strip()
                                 if txt:
+                                    has_text = True
                                     assistant_texts.append({"ts": ts_iso, "text": txt})
                             elif btype == "tool_use":
                                 has_tool_use = True
@@ -297,13 +331,14 @@ def parse_session_file(
                     elif isinstance(raw, str):
                         stripped = raw.strip()
                         if stripped:
+                            has_text = True
                             assistant_texts.append({"ts": ts_iso, "text": stripped})
                     if not has_tool_use and msg.get("stop_reason") == "tool_use":
                         # Defensive: some records store stop_reason without a
                         # corresponding block (content truncated / older format).
                         has_tool_use = True
                     if ts:
-                        gap_records.append({"ts": ts, "speaker": "assistant", "has_tool_use": has_tool_use})
+                        gap_records.append({"ts": ts, "speaker": "assistant", "has_tool_use": has_tool_use, "has_text": has_text})
     except OSError as e:
         print(f"  ! failed to read {path}: {e}", file=sys.stderr)
         return None
@@ -314,6 +349,12 @@ def parse_session_file(
     if user_msgs == 0:
         return None
 
+    # Session span tracks user/assistant turns only. Auxiliary record types
+    # (pr-link, system, …) can arrive long after the last real turn and would
+    # otherwise inflate durationMin past the span the gap math reasons about,
+    # breaking the `durationMin - activeDurationMin == idleSec / 60`
+    # conservation invariant.
+    last_ts = gap_records[-1]["ts"] if gap_records else None
     created = first_user_ts or modified
     if not (window_start <= modified < window_end or window_start <= created < window_end):
         return None
@@ -329,7 +370,11 @@ def parse_session_file(
         | {j for m in assistant_texts for j in extract_jira_ids(m["text"])}
     )
 
-    classified = _classify_and_score_gaps(gap_records, cap_sec=user_pause_cap_min * 60)
+    classified = _classify_and_score_gaps(
+        gap_records,
+        user_pause_cap_sec=user_pause_cap_min * 60,
+        tool_runtime_cap_sec=tool_runtime_cap_min * 60,
+    )
     duration_sec = ((last_ts or modified) - created).total_seconds()
     needs_active_review, active_review_reason = _active_review_flag(
         longest_user_pause_sec=classified["longestUserPauseSec"],
@@ -353,6 +398,7 @@ def parse_session_file(
         "durationMin": round(duration_sec / 60, 1),
         "activeDurationMin": round(classified["activeSec"] / 60, 1),
         "idleSec": classified["idleSec"],
+        "idleBreakdownSec": classified["idleBreakdownSec"],
         "userPauseCount": classified["userPauseCount"],
         "longestUserPauseSec": classified["longestUserPauseSec"],
         "gaps": classified["gaps"],
@@ -378,6 +424,7 @@ def scan_sessions(
     window_end: datetime,
     *,
     user_pause_cap_min: float = 10.0,
+    tool_runtime_cap_min: float = 30.0,
 ) -> list[dict]:
     """Walk projects_dir/*/*.jsonl, return sessions whose activity falls in the window.
 
@@ -400,7 +447,11 @@ def scan_sessions(
                 continue
         except OSError:
             continue
-        session = parse_session_file(p, window_start, window_end, user_pause_cap_min=user_pause_cap_min)
+        session = parse_session_file(
+            p, window_start, window_end,
+            user_pause_cap_min=user_pause_cap_min,
+            tool_runtime_cap_min=tool_runtime_cap_min,
+        )
         if session:
             sessions.append(session)
     sessions.sort(key=lambda session: session["createdAt"], reverse=True)
