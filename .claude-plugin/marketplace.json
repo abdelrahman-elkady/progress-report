@@ -1,0 +1,16 @@
+{
+  "name": "progress-report",
+  "owner": {
+    "name": "Abdelrahman Elkady"
+  },
+  "metadata": {
+    "description": "Marketplace for the progress-report plugin."
+  },
+  "plugins": [
+    {
+      "name": "progress-report",
+      "source": "./plugin",
+      "category": "productivity"
+    }
+  ]
+}

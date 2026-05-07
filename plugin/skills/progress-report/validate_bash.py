@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PreToolUse hook for the progress-report-skill skill.
+PreToolUse hook for the progress-report skill.
 
 Reads a hook payload from stdin and decides whether to allow the Bash command.
 The skill's bundled `generate.py` runs silently; any other python invocation
@@ -20,7 +20,7 @@ import shlex
 import sys
 
 ALLOWED_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "generate.py")
-_HOOK_PREFIX = "progress-report-skill hook"
+_HOOK_PREFIX = "progress-report hook"
 
 
 def ask(reason: str) -> None:
@@ -49,7 +49,6 @@ def main() -> None:
 
     command = payload.get("tool_input", {}).get("command", "")
 
-    # Only constrain commands that would invoke python at all.
     if not re.search(r"\bpython[23]?\b", command):
         return
 
@@ -87,8 +86,6 @@ def main() -> None:
             f"{_HOOK_PREFIX}: python3 invocation targets a script other than "
             f"the bundled {ALLOWED_SCRIPT} — approve to proceed: {command}"
         )
-
-    # Validation passed — exit 0 with no output to allow.
 
 
 if __name__ == "__main__":

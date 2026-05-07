@@ -1,5 +1,5 @@
 ---
-name: progress-report-skill
+name: progress-report
 description: Generate a progress report correlating Claude Code sessions with the user's GitHub PR activity. Scans local Claude sessions in a configurable date window (default last 7 days), fetches the user's authored + reviewed PRs targeting master/main (configurable via --branches) via gh CLI, correlates them by repo/branch/file overlap/Jira ID/time, categorizes each session, and outputs structured JSON and Markdown. Use when the user wants to see what they worked on, get a Claude+GitHub activity summary, generate a progress digest, or correlate Claude sessions with shipped PRs. See report.schema.json for the formal contract and REPORT_SCHEMA.md for consumer guidance.
 argument-hint: "[--days N | --from YYYY-MM-DD --to YYYY-MM-DD] [--week-start mon|tue|wed|thu|fri|sat|sun] [--user LOGIN] [--branches a,b,c] [--output-dir PATH] [--format json|md|all] [--no-reviews] [--clear-cache] [--user-pause-cap-min MINUTES] [--tool-runtime-cap-min MINUTES] [--rerender]"
 allowed-tools: Bash(python3 *), Bash(gh *)
@@ -8,7 +8,7 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "python3 ${CLAUDE_SKILL_DIR}/validate_bash.py"
+          command: "python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/validate_bash.py"
 ---
 
 # Progress report
@@ -77,13 +77,13 @@ If the user passed any argument or natural-language hint (e.g. `--days 14`, "las
 ### Default invocation
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/generate.py
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py
 ```
 
 With explicit args:
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/generate.py \
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py \
   --days 14 \
   --branches master,main,staging,develop \
   --output-dir ~/reports/sprint-23 \
@@ -93,7 +93,7 @@ python3 ${CLAUDE_SKILL_DIR}/generate.py \
 For an explicit date range:
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/generate.py --from 2026-03-01 --to 2026-03-31
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py --from 2026-03-01 --to 2026-03-31
 ```
 
 After generation, tell the user the output paths and the headline counts (sessions, authored PRs, reviewed PRs, uncorrelated sessions).
@@ -120,7 +120,7 @@ Both passes below run **by default** after `generate.py` finishes. Skip only if 
 4. Re-emit artifacts:
 
    ```bash
-   python3 ${CLAUDE_SKILL_DIR}/generate.py --rerender --output-dir <output-dir>
+   python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py --rerender --output-dir <output-dir>
    ```
 
    Pass `--format md` (or `json`) to limit which artifacts are rewritten.
@@ -139,7 +139,7 @@ Each PR row in `report.json` has a `jiraIds` array extracted from the PR title. 
 4. Re-emit markdown:
 
    ```bash
-   python3 ${CLAUDE_SKILL_DIR}/generate.py --rerender --output-dir <output-dir> --format md
+   python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py --rerender --output-dir <output-dir> --format md
    ```
 
 Skip only if the Atlassian MCP is not connected (the regex-level Jira ID extraction stands on its own) or the user explicitly opts out.
