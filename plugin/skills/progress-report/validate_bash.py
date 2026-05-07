@@ -19,7 +19,7 @@ import re
 import shlex
 import sys
 
-ALLOWED_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "generate.py")
+ALLOWED_SCRIPT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "generate.py")
 _HOOK_PREFIX = "progress-report hook"
 
 

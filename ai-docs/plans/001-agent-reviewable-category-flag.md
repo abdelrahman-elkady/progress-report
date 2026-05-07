@@ -57,7 +57,7 @@ Agent refinement loop: `for s in report.sessions if s.needsReview → re-inspect
    session["reviewReason"] = reason
    ```
 
-3. **`report.schema.json`** — Add `needsReview` (boolean) and `reviewReason` (string | null) to the `Session` `$defs`. Add both to `Session.required`. Bump `$id` from `progress-report-skill/report/v1.0.0` to `progress-report-skill/report/v1.1.0` (additive MINOR).
+3. **`report.schema.json`** — Add `needsReview` (boolean) and `reviewReason` (string | null) to the `Session` `$defs`. Add both to `Session.required`. Bump `$id` from `progress-report/report/v1.0.0` to `progress-report/report/v1.1.0` (additive MINOR).
 
 4. **`lib/report.py:177` (`recompute_totals`)** — Add a tiny backfill so `--rerender` on a pre-v1.1.0 report auto-migrates: for each session, if `needsReview` is absent, set both fields from `category` using `review_reason`. Keeps old reports renderable without a full re-scan.
 

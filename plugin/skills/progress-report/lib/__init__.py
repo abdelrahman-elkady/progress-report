@@ -1,1 +1,1 @@
-"""progress-report-skill library modules."""
+"""progress-report library modules."""
