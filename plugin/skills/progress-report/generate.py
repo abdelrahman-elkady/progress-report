@@ -123,7 +123,7 @@ def _parse_args(argv=None):
     p.add_argument("--branches", default=DEFAULT_BRANCHES,
                    help=f"Comma-separated branches that count as 'shipped' (default: {DEFAULT_BRANCHES}).")
     p.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
-                   help=f"Directory for outputs (default: {DEFAULT_OUTPUT_DIR}).")
+                   help="Directory for outputs (default: ~/claude-progress-report).")
     p.add_argument("--format", choices=["all", "json", "md"], default="all",
                    help="Which artifacts to write (default: all).")
     p.add_argument("--no-reviews", action="store_true",

@@ -1,4 +1,4 @@
-# progress-report-skill
+# progress-report
 
 A [Claude Code](https://claude.ai/code) plugin that shows you what you worked on. It correlates your Claude Code sessions with your GitHub PR activity and produces a structured report.
 
@@ -13,7 +13,7 @@ A [Claude Code](https://claude.ai/code) plugin that shows you what you worked on
 In Claude Code, run:
 
 ```
-/plugin marketplace add abdelrahman-elkady/progress-report-skill
+/plugin marketplace add abdelrahman-elkady/progress-report
 /plugin install progress-report@progress-report
 ```
 
@@ -45,13 +45,13 @@ Or just ask naturally -- "what did I work on this week?", "generate a progress r
 | `--week-start DAY` | -- | Align to a weekday (e.g. `sun`) |
 | `--user LOGIN` | current `gh` user | GitHub user to report on |
 | `--branches` | `master,main` | Branches that count as "shipped" |
-| `--output-dir PATH` | `~/claude-progress-report/` | Where to write output |
+| `--output-dir PATH` | current directory (or `~/claude-progress-report/` if Claude can't resolve it) | Where to write output |
 | `--format` | `all` | `json`, `md`, or `all` |
 | `--no-reviews` | off | Skip reviewed PRs |
 
 ## What you get
 
-The report is written to `~/claude-progress-report/` by default:
+The report is written to your current working directory by default (override with `--output-dir`):
 
 - **`report.json`** -- structured data with your sessions, PRs (authored + reviewed), how they correlate, Jira ticket IDs, and summary totals
 - **`report.md`** -- a readable Markdown digest grouped by repo and category
@@ -62,16 +62,14 @@ If the Atlassian MCP is connected, Claude can also enrich the report with real J
 
 ## Development
 
-To iterate on the plugin locally, install from the repo path instead of the GitHub source.
-
-Install from a local checkout:
+Install from a local checkout instead of GitHub:
 
 ```
-/plugin marketplace add /absolute/path/to/progress-report-skill
+/plugin marketplace add /absolute/path/to/progress-report
 /plugin install progress-report@progress-report
 ```
 
-Pull your latest edits into the installed copy after making changes:
+Refresh the installed copy after editing:
 
 ```
 /plugin marketplace update progress-report

@@ -53,7 +53,7 @@ The join key is **`session.repo == pr.repoShort`** (case-insensitive). Everythin
 ## Module map
 
 ```
-progress-report-skill/                 (repo root — dev files stay here)
+progress-report/                       (repo root — dev files stay here)
 ├── .claude-plugin/marketplace.json    ← one-plugin marketplace catalog
 ├── report.schema.json                 ← formal JSON Schema for report.json (machine-readable contract)
 ├── REPORT_SCHEMA.md                   ← human context for dashboard consumers
@@ -71,7 +71,7 @@ progress-report-skill/                 (repo root — dev files stay here)
             ├── scanner.py             ← parse_session_file, scan_sessions; skips subagents/, isSidechain, SKIP_TYPES
             ├── categorize.py          ← keyword + tool-usage rules → CATEGORIES string
             ├── github.py              ← gh wrappers, ThreadPoolExecutor(8), persistent _pr-cache.json
-            ├── correlate.py           ← scoring, hard-rejects, per-side capping; sets session._jiraIds
+            ├── correlate.py           ← scoring, hard-rejects, per-side capping
             └── report.py              ← build_report, recompute_totals, write_json/md
 ```
 

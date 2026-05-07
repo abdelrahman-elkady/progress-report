@@ -131,18 +131,17 @@ Skip only if the user explicitly opts out, or if no sessions are flagged.
 
 ### Jira ticket enrichment via the Atlassian MCP
 
-Each PR row in `report.json` has a `jiraIds` array extracted from the PR title. **Always run this pass** when the Atlassian MCP is connected (`mcp__claude_ai_Atlassian__getJiraIssue` available) and `report.prs[*].jiraIds` contains any IDs:
+`report.tickets[]` already groups Jira IDs collected from sessions and PRs, with `title` and `status` initialized to `null`. **Always run this pass** when the Atlassian MCP is connected (`mcp__claude_ai_Atlassian__getJiraIssue` available) and `report.tickets` is non-empty:
 
-1. Collect all unique Jira IDs across `report.prs[*].jiraIds`.
-2. For each ID, call `mcp__claude_ai_Atlassian__getJiraIssue` for summary, status, type, assignee.
-3. Inject the result into a new top-level `jiraIssues` map in `report.json` (keyed by Jira ID) via the Edit tool.
-4. Re-emit markdown:
+1. For each `ticket` in `report.tickets`, call `mcp__claude_ai_Atlassian__getJiraIssue` with `ticket.id`.
+2. Set `ticket.title` to the issue summary and `ticket.status` to the issue status (Edit in place). Leave `null` if the lookup fails — `_merge_tickets` only preserves entries with at least one of these populated.
+3. Re-emit JSON so the totals stay consistent (markdown is unaffected by ticket enrichment today):
 
    ```bash
-   python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py --rerender --output-dir <output-dir> --format md
+   python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py --rerender --output-dir <output-dir> --format json
    ```
 
-Skip only if the Atlassian MCP is not connected (the regex-level Jira ID extraction stands on its own) or the user explicitly opts out.
+Skip only if the Atlassian MCP is not connected (regex-level Jira ID extraction stands on its own) or the user explicitly opts out.
 
 ## Notes
 
