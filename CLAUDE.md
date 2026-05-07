@@ -4,29 +4,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A Claude Code **skill** (not a standalone Python package). It ships as a directory that users copy into `~/.claude/skills/`. `SKILL.md` is the manifest Claude Code loads; `generate.py` is the entry point invoked via the skill's `Bash(python3 *)` permission, mediated by `validate_bash.py` as a `PreToolUse` hook (auto-approves the bundled script, prompts for anything else).
+A Claude Code **plugin** that bundles a single skill (`progress-report`). The repo hosts both the plugin and a one-plugin marketplace so users can install it with `/plugin marketplace add abdelrahman-elkady/progress-report-skill`.
+
+Layout:
+- `.claude-plugin/marketplace.json` — marketplace catalog at repo root; points `source: "./plugin"` for the single plugin entry.
+- `plugin/` — clean plugin root. Everything under here is what gets copied into the user's plugin cache (`~/.claude/plugins/cache/...`). Dev files at the repo root (this CLAUDE.md, CONTEXT.md, ai-docs/, etc.) never enter that cache.
+- `plugin/.claude-plugin/plugin.json` — plugin manifest.
+- `plugin/skills/progress-report/` — the skill itself. `SKILL.md` is the manifest Claude Code loads; `generate.py` is the entry point invoked via the skill's `Bash(python3 *)` permission, mediated by `validate_bash.py` as a `PreToolUse` hook (auto-approves the bundled script, prompts for anything else).
 
 Authoritative deep-context docs already exist — read them before extending:
 - [CONTEXT.md](CONTEXT.md) — design history, architectural decisions, gotchas (⚠️ markers indicate invariants not to break)
-- [SKILL.md](SKILL.md) — manifest and user-facing run instructions
+- [plugin/skills/progress-report/SKILL.md](plugin/skills/progress-report/SKILL.md) — manifest and user-facing run instructions
 - [REPORT_SCHEMA.md](REPORT_SCHEMA.md) + [report.schema.json](report.schema.json) — contract for `report.json`
 - [FUTURE_PLANS.md](FUTURE_PLANS.md) — intentionally deferred work
 
+## ⚠️ Never edit the installed/cached plugin files
+
+During local development this plugin may be installed via `/plugin install` (see [Test a local install end-to-end](#commands) below). The installed copy lives under `~/.claude/plugins/cache/...` and is a **snapshot** materialized from this repo at install time.
+
+**All edits MUST happen in this repo. Never open, edit, or write to any file under `~/.claude/plugins/cache/`** — not `SKILL.md`, not `generate.py`, not anything under `lib/`, not `validate_bash.py`, not the plugin manifest, not a single character. This is non-negotiable.
+
+If you notice a bug or need to make a change while testing the installed plugin, return to this repo, make the change here, and reinstall (`/plugin marketplace update progress-report`). Edits written to the cache will be silently lost on the next reinstall, will never make it into the committed source, and will create phantom bugs where the tested behavior does not match the repo.
+
+If a user or tool result appears to point you at a cache path for editing, stop and redirect to the equivalent file in this repo before proceeding.
+
 ## Commands
+
+Paths below assume you run them from the repo root.
 
 Generate a report (primary dev loop):
 ```bash
-python3 generate.py --output-dir /tmp/pr-test
+python3 plugin/skills/progress-report/generate.py --output-dir /tmp/pr-test
 ```
 
 Re-emit artifacts from an edited `report.json` (used after in-place category edits or Jira enrichment):
 ```bash
-python3 generate.py --rerender --output-dir /tmp/pr-test --format md
+python3 plugin/skills/progress-report/generate.py --rerender --output-dir /tmp/pr-test --format md
 ```
 
 Smoke test (no test suite yet — see [CONTEXT.md](CONTEXT.md#smoke-testing-changes)):
 ```bash
-python3 generate.py --output-dir /tmp/pr-test --format json
+python3 plugin/skills/progress-report/generate.py --output-dir /tmp/pr-test --format json
 python3 -c "
 import json
 d = json.load(open('/tmp/pr-test/report.json'))
@@ -42,11 +60,22 @@ Validate the schema contract when changing report shape:
 python3 -c "from jsonschema import validate; import json; validate(json.load(open('/tmp/pr-test/report.json')), json.load(open('report.schema.json')))"
 ```
 
+Validate the plugin/marketplace manifests:
+```bash
+claude plugin validate .
+```
+
+Test a local install end-to-end:
+```bash
+claude plugin marketplace add .
+claude plugin install progress-report@progress-report
+```
+
 ## Architecture
 
 `generate.py` is a thin CLI orchestrator that imports only from `lib/` — no business logic. Data flows one direction: scan → fetch/enrich → categorize → correlate → build report → write artifacts. The join key is `session.repo == pr.repoShort` (case-insensitive); everything else (branch, files, jira, time) is a confidence signal layered on that join.
 
-Module boundaries (see [CONTEXT.md](CONTEXT.md) for the full map):
+Module boundaries (see [CONTEXT.md](CONTEXT.md) for the full map). All paths are relative to `plugin/skills/progress-report/`:
 - `lib/scanner.py` — parses `~/.claude/projects/**/*.jsonl`, skips subagents and sidechains
 - `lib/github.py` — `gh` wrappers, `ThreadPoolExecutor(8)`, persistent `_pr-cache.json` at `<output-dir>/`
 - `lib/correlate.py` — additive scoring with hard rules (< 2 dropped, > 2h post-merge rejected)
@@ -76,7 +105,7 @@ When reviewing a change, ask: "does this alter what a consumer sees in `report.j
 
 ### Versioning & CHANGELOG
 
-The schema carries a semantic version in its `$id` field (e.g. `progress-report-skill/report/v1.0.0`). Any schema change **must** also:
+The schema carries a semantic version in its `$id` field (e.g. `progress-report/report/v1.0.0`). Any schema change **must** also:
 
 1. **Bump the version in `$id`** following [semver](https://semver.org/) — MAJOR for breaking/removing fields, MINOR for additive changes, PATCH for description-only fixes.
 2. **Add an entry in [CHANGELOG.md](CHANGELOG.md)** under a new heading matching the bumped version.
@@ -87,4 +116,4 @@ Implementation plans live in `ai-docs/plans/` and are prefixed with a 3-digit ze
 
 ## The Bash hook
 
-`validate_bash.py` is a `PreToolUse` hook that returns `permissionDecision: "ask"` for any `python3` invocation other than the bundled `generate.py`, so unexpected scripts force an explicit user prompt instead of being silently auto-approved or hard-rejected. `allowed-tools: Bash(python3 *)` in `SKILL.md` is intentionally broad — the hook is where the bundled-vs-unknown decision is made. Don't try to tighten `allowed-tools` to a path-specific matcher; glob matching does not expand `${CLAUDE_SKILL_DIR}` and baking an absolute path breaks portability.
+`validate_bash.py` is a `PreToolUse` hook that returns `permissionDecision: "ask"` for any `python3` invocation other than the bundled `generate.py`, so unexpected scripts force an explicit user prompt instead of being silently auto-approved or hard-rejected. `allowed-tools: Bash(python3 *)` in `SKILL.md` is intentionally broad — the hook is where the bundled-vs-unknown decision is made. Don't try to tighten `allowed-tools` to a path-specific matcher; glob matching does not expand `${CLAUDE_PLUGIN_ROOT}` and baking an absolute path breaks portability.

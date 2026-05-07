@@ -2,7 +2,7 @@
 
 All notable schema changes to the progress report output are documented here.
 The version in each heading matches the `$id` field in `report.schema.json`
-(e.g. `progress-report-skill/report/v0.2.0`). This project uses
+(e.g. `progress-report/report/v0.2.0`). This project uses
 [Semantic Versioning](https://semver.org/): MAJOR for breaking/removing fields,
 MINOR for additive changes, PATCH for description or docs-only fixes.
 

@@ -104,7 +104,7 @@ def _compute_window(args) -> tuple[datetime, datetime]:
 
 def _parse_args(argv=None):
     p = argparse.ArgumentParser(
-        prog="progress-report-skill",
+        prog="progress-report",
         description="Generate a Claude+GitHub progress report.",
     )
     p.add_argument("--days", type=int, default=7,

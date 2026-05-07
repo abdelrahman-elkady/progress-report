@@ -1,6 +1,6 @@
 # progress-report-skill
 
-A [Claude Code](https://claude.ai/code) skill that shows you what you worked on. It correlates your Claude Code sessions with your GitHub PR activity and produces a structured report.
+A [Claude Code](https://claude.ai/code) plugin that shows you what you worked on. It correlates your Claude Code sessions with your GitHub PR activity and produces a structured report.
 
 ## Prerequisites
 
@@ -10,27 +10,21 @@ A [Claude Code](https://claude.ai/code) skill that shows you what you worked on.
 
 ## Install
 
-Copy this directory into your Claude Code skills folder:
-
-```bash
-cp -r progress-report-skill ~/.claude/skills/progress-report-skill
-```
-
-Then ask Claude to fix the hook path — the skill's pre-tool hook uses `${CLAUDE_SKILL_DIR}` which doesn't resolve as a shell variable at hook execution time:
+In Claude Code, run:
 
 ```
-In the progress-report-skill SKILL.md, replace ${CLAUDE_SKILL_DIR} in the hook
-command with the absolute path of the skill directory.
+/plugin marketplace add abdelrahman-elkady/progress-report-skill
+/plugin install progress-report@progress-report
 ```
 
-Claude Code discovers skills automatically after that.
+To update later, run `/plugin marketplace update progress-report`.
 
 ## Usage
 
 In Claude Code, run:
 
 ```
-/progress-report-skill
+/progress-report
 ```
 
 Or just ask naturally -- "what did I work on this week?", "generate a progress report", etc.
@@ -38,10 +32,10 @@ Or just ask naturally -- "what did I work on this week?", "generate a progress r
 ### Options
 
 ```
-/progress-report-skill --days 14
-/progress-report-skill --from 2026-03-01 --to 2026-03-31
-/progress-report-skill --branches master,main,staging
-/progress-report-skill --format md
+/progress-report --days 14
+/progress-report --from 2026-03-01 --to 2026-03-31
+/progress-report --branches master,main,staging
+/progress-report --format md
 ```
 
 | Flag | Default | Description |
@@ -65,3 +59,27 @@ The report is written to `~/claude-progress-report/` by default:
 Each session is auto-categorized (`implementation`, `debugging`, `refactor`, `exploration`, `planning`, `docs`, `review`, `devops`, `testing`, `meta`, `ask`, `other`) and linked to the PRs it contributed to.
 
 If the Atlassian MCP is connected, Claude can also enrich the report with real Jira ticket summaries.
+
+## Development
+
+To iterate on the plugin locally, install from the repo path instead of the GitHub source.
+
+Install from a local checkout:
+
+```
+/plugin marketplace add /absolute/path/to/progress-report-skill
+/plugin install progress-report@progress-report
+```
+
+Pull your latest edits into the installed copy after making changes:
+
+```
+/plugin marketplace update progress-report
+```
+
+Uninstall:
+
+```
+/plugin uninstall progress-report@progress-report
+/plugin marketplace remove progress-report
+```

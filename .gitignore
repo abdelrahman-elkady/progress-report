@@ -155,3 +155,6 @@ venv/
 
 plan-and-dev-assets/
 .claude/settings.local.json
+
+# macOS
+.DS_Store
