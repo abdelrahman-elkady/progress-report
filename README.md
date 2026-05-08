@@ -60,6 +60,8 @@ Each session is auto-categorized (`implementation`, `debugging`, `refactor`, `ex
 
 If the Atlassian MCP is connected, Claude can also enrich the report with real Jira ticket summaries.
 
+To visualize `report.json` in a browser, see [weekly-report-visualizer](https://github.com/abdelrahman-elkady/weekly-report-visualizer).
+
 ## Development
 
 Install from a local checkout instead of GitHub:
