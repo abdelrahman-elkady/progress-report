@@ -1,1 +1,1 @@
-"""progress-report library modules."""
+"""dev-digest library modules."""

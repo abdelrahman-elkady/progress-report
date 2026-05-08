@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A Claude Code **plugin** that bundles a single skill (`progress-report`). The repo hosts both the plugin and a one-plugin marketplace so users can install it with `/plugin marketplace add abdelrahman-elkady/progress-report`.
+A Claude Code **plugin** that bundles a single skill (`dev-digest`). The repo hosts both the plugin and a one-plugin marketplace so users can install it with `/plugin marketplace add abdelrahman-elkady/progress-report`. (The plugin is named `dev-digest`; the GitHub repo and the on-disk skill directory are still `progress-report` for now and will be renamed in a follow-up.)
 
 Layout:
 - `.claude-plugin/marketplace.json` — marketplace catalog at repo root; points `source: "./plugin"` for the single plugin entry.
@@ -24,7 +24,7 @@ During local development this plugin may be installed via `/plugin install` (see
 
 **All edits MUST happen in this repo. Never open, edit, or write to any file under `~/.claude/plugins/cache/`** — not `SKILL.md`, not `generate.py`, not anything under `lib/`, not `validate_bash.py`, not the plugin manifest, not a single character. This is non-negotiable.
 
-If you notice a bug or need to make a change while testing the installed plugin, return to this repo, make the change here, and reinstall (`/plugin marketplace update progress-report`). Edits written to the cache will be silently lost on the next reinstall, will never make it into the committed source, and will create phantom bugs where the tested behavior does not match the repo.
+If you notice a bug or need to make a change while testing the installed plugin, return to this repo, make the change here, and reinstall (`/plugin marketplace update dev-digest`). Edits written to the cache will be silently lost on the next reinstall, will never make it into the committed source, and will create phantom bugs where the tested behavior does not match the repo.
 
 If a user or tool result appears to point you at a cache path for editing, stop and redirect to the equivalent file in this repo before proceeding.
 
@@ -68,7 +68,7 @@ claude plugin validate .
 Test a local install end-to-end:
 ```bash
 claude plugin marketplace add .
-claude plugin install progress-report@progress-report
+claude plugin install dev-digest@dev-digest
 ```
 
 ## Architecture
@@ -105,7 +105,7 @@ When reviewing a change, ask: "does this alter what a consumer sees in `report.j
 
 ### Versioning & CHANGELOG
 
-The schema carries a semantic version in its `$id` field (e.g. `progress-report/report/v2.0.0`). Any schema change **must** also:
+The schema carries a semantic version in its `$id` field (e.g. `dev-digest/report/v2.0.0`). Any schema change **must** also:
 
 1. **Bump the version in `$id`** following [semver](https://semver.org/) — MAJOR for breaking/removing fields, MINOR for additive changes, PATCH for description-only fixes.
 2. **Add an entry in [CHANGELOG.md](CHANGELOG.md)** under a new heading matching the bumped version.

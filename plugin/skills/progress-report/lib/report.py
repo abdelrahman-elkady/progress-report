@@ -323,7 +323,7 @@ def _render_pr_section(lines: list[str], heading: str, prs: list[dict], *, show_
 def write_markdown(report: dict, path: Path) -> None:
     lines: list[str] = []
     lines.append(
-        f"# Claude progress report — {report['windowStart'][:10]} → {report['windowEnd'][:10]}"
+        f"# Claude dev digest — {report['windowStart'][:10]} → {report['windowEnd'][:10]}"
     )
     lines.append("")
     t = report["totals"]

@@ -1,8 +1,8 @@
 # Changelog
 
-All notable schema changes to the progress report output are documented here.
+All notable schema changes to the dev digest output are documented here.
 The version in each heading matches the `$id` field in `report.schema.json`
-(e.g. `progress-report/report/v2.0.0`). This project uses
+(e.g. `dev-digest/report/v2.0.0`). This project uses
 [Semantic Versioning](https://semver.org/): MAJOR for breaking/removing fields,
 MINOR for additive changes, PATCH for description or docs-only fixes.
 
@@ -10,7 +10,15 @@ Consumers of `report.json` should review this when updating.
 
 ## Unreleased
 
-_(nothing yet)_
+### Changed
+
+- **Renamed plugin** from `progress-report` to `dev-digest`. The schema `$id`
+  is now `dev-digest/report/v2.0.0` (URI changed, version unchanged — the
+  shape of `report.json` is byte-for-byte identical to v2.0.0 under the old
+  `$id`). Consumers that pin on the URI must update their pin; consumers that
+  validate against the schema content are unaffected. Default output directory
+  moved from `~/claude-progress-report/` to `~/claude-dev-digest/`. Slash
+  command is now `/dev-digest`.
 
 ## 2.0.0
 

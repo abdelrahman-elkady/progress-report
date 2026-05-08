@@ -1,6 +1,6 @@
 ---
-name: progress-report
-description: Generate a progress report correlating Claude Code sessions with the user's GitHub PR activity. Scans local Claude sessions in a configurable date window (default last 7 days), fetches the user's authored + reviewed PRs targeting master/main (configurable via --branches) via gh CLI, correlates them by repo/branch/file overlap/Jira ID/time, categorizes each session, and outputs structured JSON and Markdown. Use when the user wants to see what they worked on, get a Claude+GitHub activity summary, generate a progress digest, or correlate Claude sessions with shipped PRs. See report.schema.json for the formal contract and REPORT_SCHEMA.md for consumer guidance.
+name: dev-digest
+description: Generate a dev digest correlating Claude Code sessions with the user's GitHub PR activity. Scans local Claude sessions in a configurable date window (default last 7 days), fetches the user's authored + reviewed PRs targeting master/main (configurable via --branches) via gh CLI, correlates them by repo/branch/file overlap/Jira ID/time, categorizes each session, and outputs structured JSON and Markdown. Use when the user wants to see what they worked on, get a Claude+GitHub activity summary, generate a progress digest, or correlate Claude sessions with shipped PRs. See report.schema.json for the formal contract and REPORT_SCHEMA.md for consumer guidance.
 argument-hint: "[--days N | --from YYYY-MM-DD --to YYYY-MM-DD] [--week-start mon|tue|wed|thu|fri|sat|sun] [--user LOGIN] [--branches a,b,c] [--output-dir PATH] [--format json|md|all] [--no-reviews] [--clear-cache] [--user-pause-cap-min MINUTES] [--tool-runtime-cap-min MINUTES] [--rerender]"
 allowed-tools: Bash(python3 *), Bash(gh *)
 hooks:
@@ -11,7 +11,7 @@ hooks:
           command: "python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/validate_bash.py"
 ---
 
-# Progress report
+# Dev digest
 
 Correlates Claude Code sessions with the user's merged GitHub PRs over a date window (default: last 7 days) and writes structured JSON + Markdown. Visualization is out of scope — `report.json` is consumed by a separate dashboard (see [REPORT_SCHEMA.md](REPORT_SCHEMA.md)).
 
@@ -38,7 +38,7 @@ Correlates Claude Code sessions with the user's merged GitHub PRs over a date wi
 | `<output-dir>/report.md` | Readable digest grouped by repo and category |
 | `<output-dir>/_pr-cache.json` | Persistent cache of PR detail+file fetches, keyed by `repo#number` |
 
-Default `<output-dir>` is `~/claude-progress-report/`.
+Default `<output-dir>` is `~/claude-dev-digest/`.
 
 ## Run
 
@@ -69,7 +69,7 @@ Questions:
 
 4. **Output directory** (header: `Output dir`)
    - `<cwd> (default)` → `--output-dir <cwd>` — resolve to the runtime working directory so the report lands next to the current project.
-   - `~/claude-progress-report` → no flag (script default).
+   - `~/claude-dev-digest` → no flag (script default).
    - Other: pass verbatim as `--output-dir <path>`.
 
 If the user passed any argument or natural-language hint (e.g. `--days 14`, "last 30 days", an output path), skip the prompt and translate their input directly into flags.

@@ -1,14 +1,14 @@
 {
-  "name": "progress-report",
+  "name": "dev-digest",
   "owner": {
     "name": "Abdelrahman Elkady"
   },
   "metadata": {
-    "description": "Marketplace for the progress-report plugin."
+    "description": "Marketplace for the dev-digest plugin."
   },
   "plugins": [
     {
-      "name": "progress-report",
+      "name": "dev-digest",
       "source": "./plugin",
       "category": "productivity"
     }

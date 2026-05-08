@@ -1,5 +1,5 @@
 {
-  "name": "progress-report",
+  "name": "dev-digest",
   "version": "1.0.0",
   "description": "Correlates your Claude Code sessions with your GitHub PR activity and writes a structured progress report.",
   "author": {
@@ -7,5 +7,5 @@
   },
   "repository": "https://github.com/abdelrahman-elkady/progress-report",
   "license": "MIT",
-  "keywords": ["progress-report", "github", "claude-code", "productivity", "reporting"]
+  "keywords": ["dev-digest", "progress-report", "github", "claude-code", "productivity", "reporting"]
 }
