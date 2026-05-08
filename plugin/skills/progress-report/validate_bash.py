@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PreToolUse hook for the dev-digest skill.
+PreToolUse hook for the claude-dev-digest skill.
 
 Reads a hook payload from stdin and decides whether to allow the Bash command.
 The skill's bundled `generate.py` runs silently; any other python invocation
@@ -20,7 +20,7 @@ import shlex
 import sys
 
 ALLOWED_SCRIPT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "generate.py")
-_HOOK_PREFIX = "dev-digest hook"
+_HOOK_PREFIX = "claude-dev-digest hook"
 
 
 def ask(reason: str) -> None:

@@ -1,6 +1,6 @@
 # Report schema
 
-Contract for consumers of the `dev-digest` skill's output artifacts.
+Contract for consumers of the `claude-dev-digest` skill's output artifacts.
 
 > **Field definitions live in [`report.schema.json`](report.schema.json)** — the formal JSON Schema. This document covers the human context that a schema file can't express: what the fields mean in practice, how to interpret them, and what to watch out for.
 >

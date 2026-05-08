@@ -1,6 +1,6 @@
 # Context — design history and architectural notes
 
-Durable memory of the `dev-digest` skill. Read this once before extending — it captures *why* the code looks the way it does so you don't re-derive the same gotchas.
+Durable memory of the `claude-dev-digest` skill. Read this once before extending — it captures *why* the code looks the way it does so you don't re-derive the same gotchas.
 
 > Using the skill? Read [SKILL.md](plugin/skills/progress-report/SKILL.md).
 > Wondering what's missing? Read [FUTURE_PLANS.md](FUTURE_PLANS.md).

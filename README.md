@@ -1,4 +1,4 @@
-# dev-digest
+# claude-dev-digest
 
 A [Claude Code](https://claude.ai/code) plugin that shows you what you worked on. It correlates your Claude Code sessions with your GitHub PR activity and produces a structured report.
 
@@ -14,19 +14,19 @@ In Claude Code, run:
 
 ```
 /plugin marketplace add abdelrahman-elkady/progress-report
-/plugin install dev-digest@dev-digest
+/plugin install claude-dev-digest@claude-dev-digest
 ```
 
-> The marketplace lives in the `abdelrahman-elkady/progress-report` GitHub repo (legacy name; will be renamed in a follow-up). The installed plugin is `dev-digest`.
+> The marketplace lives in the `abdelrahman-elkady/progress-report` GitHub repo (legacy name; will be renamed in a follow-up). The installed plugin is `claude-dev-digest`.
 
-To update later, run `/plugin marketplace update dev-digest`.
+To update later, run `/plugin marketplace update claude-dev-digest`.
 
 ## Usage
 
 In Claude Code, run:
 
 ```
-/dev-digest
+/claude-dev-digest
 ```
 
 Or just ask naturally -- "what did I work on this week?", "generate a dev digest", etc.
@@ -34,10 +34,10 @@ Or just ask naturally -- "what did I work on this week?", "generate a dev digest
 ### Options
 
 ```
-/dev-digest --days 14
-/dev-digest --from 2026-03-01 --to 2026-03-31
-/dev-digest --branches master,main,staging
-/dev-digest --format md
+/claude-dev-digest --days 14
+/claude-dev-digest --from 2026-03-01 --to 2026-03-31
+/claude-dev-digest --branches master,main,staging
+/claude-dev-digest --format md
 ```
 
 | Flag | Default | Description |
@@ -70,18 +70,18 @@ Install from a local checkout instead of GitHub:
 
 ```
 /plugin marketplace add /absolute/path/to/progress-report
-/plugin install dev-digest@dev-digest
+/plugin install claude-dev-digest@claude-dev-digest
 ```
 
 Refresh the installed copy after editing:
 
 ```
-/plugin marketplace update dev-digest
+/plugin marketplace update claude-dev-digest
 ```
 
 Uninstall:
 
 ```
-/plugin uninstall dev-digest@dev-digest
-/plugin marketplace remove dev-digest
+/plugin uninstall claude-dev-digest@claude-dev-digest
+/plugin marketplace remove claude-dev-digest
 ```
