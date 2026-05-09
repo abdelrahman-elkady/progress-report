@@ -2,7 +2,7 @@
 
 Durable memory of the `claude-dev-digest` skill. Read this once before extending — it captures *why* the code looks the way it does so you don't re-derive the same gotchas.
 
-> Using the skill? Read [SKILL.md](plugin/skills/progress-report/SKILL.md).
+> Using the skill? Read [SKILL.md](plugin/skills/claude-dev-digest/SKILL.md).
 > Wondering what's missing? Read [FUTURE_PLANS.md](FUTURE_PLANS.md).
 
 ## ⚠️ Portability is non-negotiable
@@ -61,7 +61,7 @@ progress-report/                       (repo root — dev files stay here)
 ├── FUTURE_PLANS.md                    ← unimplemented improvements
 └── plugin/                            ← plugin root; everything below ships to users
     ├── .claude-plugin/plugin.json     ← plugin manifest
-    └── skills/progress-report/
+    └── skills/claude-dev-digest/
         ├── SKILL.md                   ← manifest, run instructions, refinement passes
         ├── generate.py                ← thin CLI orchestrator (argparse, run order, --rerender)
         ├── validate_bash.py           ← Bash PreToolUse hook (resolves generate.py from __file__)
@@ -175,14 +175,14 @@ User and assistant text messages are kept **in full** so consumers can display t
 ## Other gotchas
 
 - **`SKIP_TYPES` in `scanner.py`** is a denylist for `.jsonl` record types we never care about. New unknown record types go here, not into the parsing branches.
-- **Don't try to "tighten" `allowed-tools` to a script-specific path.** The matcher does literal glob matching against the command string and does **not** expand `${CLAUDE_PLUGIN_ROOT}` or any env var. A rule like `Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py *)` would never match; a hardcoded absolute path is non-portable; `Bash(python3 */generate.py *)` is security theater. The skill intentionally pairs broad `allowed-tools: Bash(python3 *)` with the [`validate_bash.py`](plugin/skills/progress-report/validate_bash.py) PreToolUse hook, which resolves the script path from `__file__` and lets *this* skill's `generate.py` through while returning `permissionDecision: "ask"` for anything else — so unexpected `python3` invocations force a user prompt rather than running silently. **The hook is where the bundled-vs-unknown decision is made; `allowed-tools` is just the gate that lets requests reach the hook.**
+- **Don't try to "tighten" `allowed-tools` to a script-specific path.** The matcher does literal glob matching against the command string and does **not** expand `${CLAUDE_PLUGIN_ROOT}` or any env var. A rule like `Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/generate.py *)` would never match; a hardcoded absolute path is non-portable; `Bash(python3 */generate.py *)` is security theater. The skill intentionally pairs broad `allowed-tools: Bash(python3 *)` with the [`validate_bash.py`](plugin/skills/claude-dev-digest/validate_bash.py) PreToolUse hook, which resolves the script path from `__file__` and lets *this* skill's `generate.py` through while returning `permissionDecision: "ask"` for anything else — so unexpected `python3` invocations force a user prompt rather than running silently. **The hook is where the bundled-vs-unknown decision is made; `allowed-tools` is just the gate that lets requests reach the hook.**
 
 ## Smoke-testing changes
 
 No test suite yet (see [FUTURE_PLANS.md](FUTURE_PLANS.md)). Minimum manual smoke:
 
 ```bash
-python3 plugin/skills/progress-report/generate.py --output-dir /tmp/pr-test --format json
+python3 plugin/skills/claude-dev-digest/generate.py --output-dir /tmp/pr-test --format json
 python3 -c "
 import json
 d = json.load(open('/tmp/pr-test/report.json'))

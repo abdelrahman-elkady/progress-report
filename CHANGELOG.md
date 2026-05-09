@@ -10,15 +10,7 @@ Consumers of `report.json` should review this when updating.
 
 ## Unreleased
 
-### Changed
-
-- **Renamed plugin** from `progress-report` to `claude-dev-digest`. The schema
-  `$id` is now `claude-dev-digest/report/v2.0.0` (URI changed, version
-  unchanged — the shape of `report.json` is byte-for-byte identical to
-  v2.0.0 under the old `$id`). Consumers that pin on the URI must update
-  their pin; consumers that validate against the schema content are
-  unaffected. Default output directory moved from `~/claude-progress-report/`
-  to `~/claude-dev-digest/`. Slash command is now `/claude-dev-digest`.
+_(nothing yet)_
 
 ## 2.0.0
 

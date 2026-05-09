@@ -8,7 +8,7 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/validate_bash.py"
+          command: "python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/validate_bash.py"
 ---
 
 # Dev digest
@@ -77,13 +77,13 @@ If the user passed any argument or natural-language hint (e.g. `--days 14`, "las
 ### Default invocation
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/generate.py
 ```
 
 With explicit args:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py \
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/generate.py \
   --days 14 \
   --branches master,main,staging,develop \
   --output-dir ~/reports/sprint-23 \
@@ -93,7 +93,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py \
 For an explicit date range:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py --from 2026-03-01 --to 2026-03-31
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/generate.py --from 2026-03-01 --to 2026-03-31
 ```
 
 After generation, tell the user the output paths and the headline counts (sessions, authored PRs, reviewed PRs, uncorrelated sessions).
@@ -120,7 +120,7 @@ Both passes below run **by default** after `generate.py` finishes. Skip only if 
 4. Re-emit artifacts:
 
    ```bash
-   python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py --rerender --output-dir <output-dir>
+   python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/generate.py --rerender --output-dir <output-dir>
    ```
 
    Pass `--format md` (or `json`) to limit which artifacts are rewritten.
@@ -138,7 +138,7 @@ Skip only if the user explicitly opts out, or if no sessions are flagged.
 3. Re-emit JSON so the totals stay consistent (markdown is unaffected by ticket enrichment today):
 
    ```bash
-   python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py --rerender --output-dir <output-dir> --format json
+   python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/generate.py --rerender --output-dir <output-dir> --format json
    ```
 
 Skip only if the Atlassian MCP is not connected (regex-level Jira ID extraction stands on its own) or the user explicitly opts out.

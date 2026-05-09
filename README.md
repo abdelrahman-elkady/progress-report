@@ -17,8 +17,6 @@ In Claude Code, run:
 /plugin install claude-dev-digest@claude-dev-digest
 ```
 
-> The marketplace lives in the `abdelrahman-elkady/progress-report` GitHub repo (legacy name; will be renamed in a follow-up). The installed plugin is `claude-dev-digest`.
-
 To update later, run `/plugin marketplace update claude-dev-digest`.
 
 ## Usage
