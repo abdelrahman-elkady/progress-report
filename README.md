@@ -13,7 +13,7 @@ A [Claude Code](https://claude.ai/code) plugin that shows you what you worked on
 In Claude Code, run:
 
 ```
-/plugin marketplace add abdelrahman-elkady/progress-report
+/plugin marketplace add abdelrahman-elkady/claude-dev-digest
 /plugin install claude-dev-digest@claude-dev-digest
 ```
 
@@ -67,7 +67,7 @@ To visualize `report.json` in a browser, see [weekly-report-visualizer](https://
 Install from a local checkout instead of GitHub:
 
 ```
-/plugin marketplace add /absolute/path/to/progress-report
+/plugin marketplace add /absolute/path/to/claude-dev-digest
 /plugin install claude-dev-digest@claude-dev-digest
 ```
 

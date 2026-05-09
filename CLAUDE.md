@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A Claude Code **plugin** that bundles a single skill (`claude-dev-digest`). The repo hosts both the plugin and a one-plugin marketplace so users can install it with `/plugin marketplace add abdelrahman-elkady/progress-report` (the GitHub repo URL still resolves at the legacy slug).
+A Claude Code **plugin** that bundles a single skill (`claude-dev-digest`). The repo hosts both the plugin and a one-plugin marketplace so users can install it with `/plugin marketplace add abdelrahman-elkady/claude-dev-digest` (the GitHub repo URL still resolves at the legacy slug).
 
 Layout:
 - `.claude-plugin/marketplace.json` — marketplace catalog at repo root; points `source: "./plugin"` for the single plugin entry.

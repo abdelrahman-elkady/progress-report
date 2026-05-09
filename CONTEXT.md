@@ -53,7 +53,7 @@ The join key is **`session.repo == pr.repoShort`** (case-insensitive). Everythin
 ## Module map
 
 ```
-progress-report/                       (repo root — dev files stay here)
+claude-dev-digest/                       (repo root — dev files stay here)
 ├── .claude-plugin/marketplace.json    ← one-plugin marketplace catalog
 ├── report.schema.json                 ← formal JSON Schema for report.json (machine-readable contract)
 ├── REPORT_SCHEMA.md                   ← human context for dashboard consumers
