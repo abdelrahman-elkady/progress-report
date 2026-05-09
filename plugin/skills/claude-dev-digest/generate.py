@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate a Claude Code progress report.
+Generate a Claude Code dev digest.
 
 Scans ~/.claude/projects for sessions in a date window, fetches the configured
 GitHub user's authored + reviewed PRs, correlates them, categorizes the sessions,
@@ -35,7 +35,7 @@ from lib.report import (
 from lib.scanner import scan_sessions
 
 DEFAULT_BRANCHES = "master,main"
-DEFAULT_OUTPUT_DIR = Path.home() / "claude-progress-report"
+DEFAULT_OUTPUT_DIR = Path.home() / "claude-dev-digest"
 PROJECTS_DIR = Path.home() / ".claude" / "projects"
 WINDOW_PADDING_DAYS = 1
 
@@ -104,8 +104,8 @@ def _compute_window(args) -> tuple[datetime, datetime]:
 
 def _parse_args(argv=None):
     p = argparse.ArgumentParser(
-        prog="progress-report",
-        description="Generate a Claude+GitHub progress report.",
+        prog="claude-dev-digest",
+        description="Generate a Claude+GitHub dev digest.",
     )
     p.add_argument("--days", type=int, default=7,
                    help="Window size in days, ending today (default: 7). Ignored if --from is set.")
@@ -123,7 +123,7 @@ def _parse_args(argv=None):
     p.add_argument("--branches", default=DEFAULT_BRANCHES,
                    help=f"Comma-separated branches that count as 'shipped' (default: {DEFAULT_BRANCHES}).")
     p.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
-                   help="Directory for outputs (default: ~/claude-progress-report).")
+                   help="Directory for outputs (default: ~/claude-dev-digest).")
     p.add_argument("--format", choices=["all", "json", "md"], default="all",
                    help="Which artifacts to write (default: all).")
     p.add_argument("--no-reviews", action="store_true",

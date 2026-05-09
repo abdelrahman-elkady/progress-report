@@ -1,4 +1,4 @@
-# progress-report
+# claude-dev-digest
 
 A [Claude Code](https://claude.ai/code) plugin that shows you what you worked on. It correlates your Claude Code sessions with your GitHub PR activity and produces a structured report.
 
@@ -14,28 +14,28 @@ In Claude Code, run:
 
 ```
 /plugin marketplace add abdelrahman-elkady/progress-report
-/plugin install progress-report@progress-report
+/plugin install claude-dev-digest@claude-dev-digest
 ```
 
-To update later, run `/plugin marketplace update progress-report`.
+To update later, run `/plugin marketplace update claude-dev-digest`.
 
 ## Usage
 
 In Claude Code, run:
 
 ```
-/progress-report
+/claude-dev-digest
 ```
 
-Or just ask naturally -- "what did I work on this week?", "generate a progress report", etc.
+Or just ask naturally -- "what did I work on this week?", "generate a dev digest", etc.
 
 ### Options
 
 ```
-/progress-report --days 14
-/progress-report --from 2026-03-01 --to 2026-03-31
-/progress-report --branches master,main,staging
-/progress-report --format md
+/claude-dev-digest --days 14
+/claude-dev-digest --from 2026-03-01 --to 2026-03-31
+/claude-dev-digest --branches master,main,staging
+/claude-dev-digest --format md
 ```
 
 | Flag | Default | Description |
@@ -45,7 +45,7 @@ Or just ask naturally -- "what did I work on this week?", "generate a progress r
 | `--week-start DAY` | -- | Align to a weekday (e.g. `sun`) |
 | `--user LOGIN` | current `gh` user | GitHub user to report on |
 | `--branches` | `master,main` | Branches that count as "shipped" |
-| `--output-dir PATH` | current directory (or `~/claude-progress-report/` if Claude can't resolve it) | Where to write output |
+| `--output-dir PATH` | current directory (or `~/claude-dev-digest/` if Claude can't resolve it) | Where to write output |
 | `--format` | `all` | `json`, `md`, or `all` |
 | `--no-reviews` | off | Skip reviewed PRs |
 
@@ -68,18 +68,18 @@ Install from a local checkout instead of GitHub:
 
 ```
 /plugin marketplace add /absolute/path/to/progress-report
-/plugin install progress-report@progress-report
+/plugin install claude-dev-digest@claude-dev-digest
 ```
 
 Refresh the installed copy after editing:
 
 ```
-/plugin marketplace update progress-report
+/plugin marketplace update claude-dev-digest
 ```
 
 Uninstall:
 
 ```
-/plugin uninstall progress-report@progress-report
-/plugin marketplace remove progress-report
+/plugin uninstall claude-dev-digest@claude-dev-digest
+/plugin marketplace remove claude-dev-digest
 ```

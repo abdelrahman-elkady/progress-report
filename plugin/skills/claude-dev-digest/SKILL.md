@@ -1,6 +1,6 @@
 ---
-name: progress-report
-description: Generate a progress report correlating Claude Code sessions with the user's GitHub PR activity. Scans local Claude sessions in a configurable date window (default last 7 days), fetches the user's authored + reviewed PRs targeting master/main (configurable via --branches) via gh CLI, correlates them by repo/branch/file overlap/Jira ID/time, categorizes each session, and outputs structured JSON and Markdown. Use when the user wants to see what they worked on, get a Claude+GitHub activity summary, generate a progress digest, or correlate Claude sessions with shipped PRs. See report.schema.json for the formal contract and REPORT_SCHEMA.md for consumer guidance.
+name: claude-dev-digest
+description: Generate a dev digest correlating Claude Code sessions with the user's GitHub PR activity. Scans local Claude sessions in a configurable date window (default last 7 days), fetches the user's authored + reviewed PRs targeting master/main (configurable via --branches) via gh CLI, correlates them by repo/branch/file overlap/Jira ID/time, categorizes each session, and outputs structured JSON and Markdown. Use when the user wants to see what they worked on, get a Claude+GitHub activity summary, generate a dev digest, or correlate Claude sessions with shipped PRs. See report.schema.json for the formal contract and REPORT_SCHEMA.md for consumer guidance.
 argument-hint: "[--days N | --from YYYY-MM-DD --to YYYY-MM-DD] [--week-start mon|tue|wed|thu|fri|sat|sun] [--user LOGIN] [--branches a,b,c] [--output-dir PATH] [--format json|md|all] [--no-reviews] [--clear-cache] [--user-pause-cap-min MINUTES] [--tool-runtime-cap-min MINUTES] [--rerender]"
 allowed-tools: Bash(python3 *), Bash(gh *)
 hooks:
@@ -8,10 +8,10 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/validate_bash.py"
+          command: "python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/validate_bash.py"
 ---
 
-# Progress report
+# Dev digest
 
 Correlates Claude Code sessions with the user's merged GitHub PRs over a date window (default: last 7 days) and writes structured JSON + Markdown. Visualization is out of scope — `report.json` is consumed by a separate dashboard (see [REPORT_SCHEMA.md](REPORT_SCHEMA.md)).
 
@@ -38,7 +38,7 @@ Correlates Claude Code sessions with the user's merged GitHub PRs over a date wi
 | `<output-dir>/report.md` | Readable digest grouped by repo and category |
 | `<output-dir>/_pr-cache.json` | Persistent cache of PR detail+file fetches, keyed by `repo#number` |
 
-Default `<output-dir>` is `~/claude-progress-report/`.
+Default `<output-dir>` is `~/claude-dev-digest/`.
 
 ## Run
 
@@ -69,7 +69,7 @@ Questions:
 
 4. **Output directory** (header: `Output dir`)
    - `<cwd> (default)` → `--output-dir <cwd>` — resolve to the runtime working directory so the report lands next to the current project.
-   - `~/claude-progress-report` → no flag (script default).
+   - `~/claude-dev-digest` → no flag (script default).
    - Other: pass verbatim as `--output-dir <path>`.
 
 If the user passed any argument or natural-language hint (e.g. `--days 14`, "last 30 days", an output path), skip the prompt and translate their input directly into flags.
@@ -77,13 +77,13 @@ If the user passed any argument or natural-language hint (e.g. `--days 14`, "las
 ### Default invocation
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/generate.py
 ```
 
 With explicit args:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py \
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/generate.py \
   --days 14 \
   --branches master,main,staging,develop \
   --output-dir ~/reports/sprint-23 \
@@ -93,7 +93,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py \
 For an explicit date range:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py --from 2026-03-01 --to 2026-03-31
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/generate.py --from 2026-03-01 --to 2026-03-31
 ```
 
 After generation, tell the user the output paths and the headline counts (sessions, authored PRs, reviewed PRs, uncorrelated sessions).
@@ -120,7 +120,7 @@ Both passes below run **by default** after `generate.py` finishes. Skip only if 
 4. Re-emit artifacts:
 
    ```bash
-   python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py --rerender --output-dir <output-dir>
+   python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/generate.py --rerender --output-dir <output-dir>
    ```
 
    Pass `--format md` (or `json`) to limit which artifacts are rewritten.
@@ -138,7 +138,7 @@ Skip only if the user explicitly opts out, or if no sessions are flagged.
 3. Re-emit JSON so the totals stay consistent (markdown is unaffected by ticket enrichment today):
 
    ```bash
-   python3 ${CLAUDE_PLUGIN_ROOT}/skills/progress-report/generate.py --rerender --output-dir <output-dir> --format json
+   python3 ${CLAUDE_PLUGIN_ROOT}/skills/claude-dev-digest/generate.py --rerender --output-dir <output-dir> --format json
    ```
 
 Skip only if the Atlassian MCP is not connected (regex-level Jira ID extraction stands on its own) or the user explicitly opts out.

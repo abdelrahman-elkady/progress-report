@@ -1,11 +1,11 @@
 {
-  "name": "progress-report",
+  "name": "claude-dev-digest",
   "version": "1.0.0",
-  "description": "Correlates your Claude Code sessions with your GitHub PR activity and writes a structured progress report.",
+  "description": "Correlates your Claude Code sessions with your GitHub PR activity and writes a structured dev digest.",
   "author": {
     "name": "Abdelrahman Elkady"
   },
   "repository": "https://github.com/abdelrahman-elkady/progress-report",
   "license": "MIT",
-  "keywords": ["progress-report", "github", "claude-code", "productivity", "reporting"]
+  "keywords": ["claude-dev-digest", "github", "claude-code", "productivity", "reporting"]
 }
