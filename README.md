@@ -62,28 +62,6 @@ If the Atlassian MCP is connected, Claude can also enrich the report with real J
 
 To visualize `report.json` in a browser, see [weekly-report-visualizer](https://github.com/abdelrahman-elkady/weekly-report-visualizer).
 
-## Troubleshooting
-
-### `API Error: 401 Invalid authentication credentials`
-
-If you see:
-
-```
-Please run /login · API Error: 401 Invalid authentication credentials
-```
-
-This is a **Claude Code authentication error**, not a GitHub CLI error. The plugin requires a valid Claude Code session to run. To fix it:
-
-1. Run `/login` inside Claude Code to authenticate your Anthropic account.
-2. Retry the `/claude-dev-digest` command.
-
-This is separate from `gh auth login`, which authenticates the GitHub CLI. Both are required:
-
-| Auth | What it does | How to check |
-|------|-------------|--------------|
-| `/login` (in Claude Code) | Authenticates your Claude Code / Anthropic session | The plugin loads without a 401 |
-| `gh auth login` (in terminal) | Authenticates the GitHub CLI for PR fetching | `gh auth status` shows a logged-in account |
-
 ## Development
 
 Install from a local checkout instead of GitHub:
