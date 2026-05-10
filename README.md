@@ -4,7 +4,7 @@ A [Claude Code](https://claude.ai/code) plugin that shows you what you worked on
 
 ## Prerequisites
 
-- [Claude Code](https://claude.ai/code)
+- [Claude Code](https://claude.ai/code), authenticated (run `/login` inside Claude Code if prompted)
 - [`gh` CLI](https://cli.github.com/) authenticated (`gh auth login`)
 - Python 3.8+
 
